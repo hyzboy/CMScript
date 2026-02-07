@@ -28,6 +28,9 @@ namespace hgl::devil
                     case OpCode::Pop:
                     case OpCode::LoadLocal:
                     case OpCode::StoreLocal:
+                    case OpCode::AddLocalConst:
+                    case OpCode::SubLocalConst:
+                    case OpCode::JumpIfLocalGeConst:
                     case OpCode::Add:
                     case OpCode::Sub:
                     case OpCode::Mul:
@@ -67,6 +70,53 @@ namespace hgl::devil
             }
 
             return true;
+        }
+
+        void PeepholeFused(BytecodeFunction &func)
+        {
+            auto &code=func.code;
+            if(code.size()<4)
+                return;
+
+            for(size_t i=0;i+3<code.size();++i)
+            {
+                const Instruction &a=code[i];
+                const Instruction &b=code[i+1];
+                const Instruction &c=code[i+2];
+                const Instruction &d=code[i+3];
+
+                if(a.op==OpCode::LoadLocal && b.op==OpCode::PushConst
+                    && c.op==OpCode::Add && d.op==OpCode::StoreLocal
+                    && a.a==d.a)
+                {
+                    code[i]=Instruction{OpCode::AddLocalConst,a.a,b.a,0};
+                    code[i+1].op=OpCode::Nop;
+                    code[i+2].op=OpCode::Nop;
+                    code[i+3].op=OpCode::Nop;
+                    continue;
+                }
+
+                if(a.op==OpCode::LoadLocal && b.op==OpCode::PushConst
+                    && c.op==OpCode::Sub && d.op==OpCode::StoreLocal
+                    && a.a==d.a)
+                {
+                    code[i]=Instruction{OpCode::SubLocalConst,a.a,b.a,0};
+                    code[i+1].op=OpCode::Nop;
+                    code[i+2].op=OpCode::Nop;
+                    code[i+3].op=OpCode::Nop;
+                    continue;
+                }
+
+                if(a.op==OpCode::LoadLocal && b.op==OpCode::PushConst
+                    && c.op==OpCode::Lt && d.op==OpCode::JumpIfFalse)
+                {
+                    code[i]=Instruction{OpCode::JumpIfLocalGeConst,a.a,b.a,d.a};
+                    code[i+1].op=OpCode::Nop;
+                    code[i+2].op=OpCode::Nop;
+                    code[i+3].op=OpCode::Nop;
+                    continue;
+                }
+            }
         }
     }
 
@@ -650,6 +700,8 @@ namespace hgl::devil
 
         if(!BuildBlock(out_func,func->GetBody()))
             return false;
+
+        PeepholeFused(out_func);
 
         if(out_func.code.empty() || out_func.code.back().op!=OpCode::Ret)
         {

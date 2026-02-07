@@ -34,6 +34,9 @@ namespace hgl::devil
             case OpCode::Pop: return "Pop";
             case OpCode::LoadLocal: return "LoadLocal";
             case OpCode::StoreLocal: return "StoreLocal";
+            case OpCode::AddLocalConst: return "AddLocalConst";
+            case OpCode::SubLocalConst: return "SubLocalConst";
+            case OpCode::JumpIfLocalGeConst: return "JumpIfLocalGeConst";
             case OpCode::Cast: return "Cast";
             case OpCode::Add: return "Add";
             case OpCode::Sub: return "Sub";
@@ -88,6 +91,13 @@ namespace hgl::devil
             case OpCode::Jump:
             case OpCode::JumpIfFalse:
                 out<<" "<<ins.a;
+                break;
+            case OpCode::AddLocalConst:
+            case OpCode::SubLocalConst:
+                out<<" local="<<ins.a<<" const="<<ins.b;
+                break;
+            case OpCode::JumpIfLocalGeConst:
+                out<<" local="<<ins.a<<" const="<<ins.b<<" -> "<<ins.c;
                 break;
             case OpCode::Cast:
             {

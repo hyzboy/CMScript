@@ -264,6 +264,27 @@ namespace hgl::devil
                             istack.push_back(istack[index]);
                             break;
                         }
+                        case OpCode::AddLocalConst:
+                        case OpCode::SubLocalConst:
+                        {
+                            const size_t index=frame.base+static_cast<size_t>(ins.a);
+                            if(index>=istack.size())
+                            {
+                                error="bytecode fastint add/sub local out of range";
+                                return false;
+                            }
+                            if(ins.b<0 || static_cast<size_t>(ins.b)>=frame.func->const_ints.size())
+                            {
+                                error="bytecode fastint const out of range";
+                                return false;
+                            }
+                            const int32_t rhs=frame.func->const_ints[static_cast<size_t>(ins.b)];
+                            if(ins.op==OpCode::AddLocalConst)
+                                istack[index]+=rhs;
+                            else
+                                istack[index]-=rhs;
+                            break;
+                        }
                         case OpCode::StoreLocal:
                         {
                             const size_t index=frame.base+static_cast<size_t>(ins.a);
@@ -444,6 +465,28 @@ namespace hgl::devil
                             }
                             break;
                         }
+                        case OpCode::JumpIfLocalGeConst:
+                        {
+                            const size_t index=frame.base+static_cast<size_t>(ins.a);
+                            if(index>=istack.size())
+                            {
+                                error="bytecode fastint jump local out of range";
+                                return false;
+                            }
+                            if(ins.b<0 || static_cast<size_t>(ins.b)>=frame.func->const_ints.size())
+                            {
+                                error="bytecode fastint const out of range";
+                                return false;
+                            }
+                            if(ins.c<0 || static_cast<size_t>(ins.c)>=frame.func->code.size())
+                            {
+                                error="bytecode fastint jump out of range";
+                                return false;
+                            }
+                            if(istack[index]>=frame.func->const_ints[static_cast<size_t>(ins.b)])
+                                frame.pc=static_cast<size_t>(ins.c);
+                            break;
+                        }
                         case OpCode::Cast:
                         {
                             if(istack.empty())
@@ -587,6 +630,50 @@ namespace hgl::devil
                     return false;
                 }
                 value_stack[index]=std::move(v);
+                return true;
+            }
+            case OpCode::AddLocalConst:
+            case OpCode::SubLocalConst:
+            {
+                const size_t index=frame.base+static_cast<size_t>(ins.a);
+                if(index>=value_stack.size())
+                {
+                    error="bytecode add/sub local out of range";
+                    return false;
+                }
+                if(ins.b<0 || static_cast<size_t>(ins.b)>=frame.func->constants.size())
+                {
+                    error="bytecode const out of range";
+                    return false;
+                }
+                AstValue lhs=value_stack[index];
+                const AstValue &rhs=frame.func->constants[static_cast<size_t>(ins.b)];
+                AstValue out=BinaryNumeric(lhs,rhs,ins.op==OpCode::AddLocalConst?OpCode::Add:OpCode::Sub);
+                value_stack[index]=std::move(out);
+                return true;
+            }
+            case OpCode::JumpIfLocalGeConst:
+            {
+                const size_t index=frame.base+static_cast<size_t>(ins.a);
+                if(index>=value_stack.size())
+                {
+                    error="bytecode jump local out of range";
+                    return false;
+                }
+                if(ins.b<0 || static_cast<size_t>(ins.b)>=frame.func->constants.size())
+                {
+                    error="bytecode const out of range";
+                    return false;
+                }
+                if(ins.c<0 || static_cast<size_t>(ins.c)>=frame.func->code.size())
+                {
+                    error="bytecode jump out of range";
+                    return false;
+                }
+                const AstValue &lhs=value_stack[index];
+                const AstValue &rhs=frame.func->constants[static_cast<size_t>(ins.b)];
+                if(lhs.ToFloat()>=rhs.ToFloat())
+                    frame.pc=static_cast<size_t>(ins.c);
                 return true;
             }
 

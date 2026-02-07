@@ -28,6 +28,9 @@ namespace hgl::devil
                     case OpCode::Pop:
                     case OpCode::LoadLocal:
                     case OpCode::StoreLocal:
+                    case OpCode::AddLocalConst:
+                    case OpCode::SubLocalConst:
+                    case OpCode::JumpIfLocalGeConst:
                     case OpCode::Add:
                     case OpCode::Sub:
                     case OpCode::Mul:
