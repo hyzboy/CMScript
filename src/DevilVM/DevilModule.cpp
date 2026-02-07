@@ -152,6 +152,26 @@ namespace devil
         return(true);
     }
 
+    bool Module::AddScriptEnum(const std::string &enum_name,ScriptEnum script_enum)
+    {
+        if(script_enums.find(enum_name)!=script_enums.end())
+        {
+            LogError("%s",("脚本枚举名称重复: "+enum_name).c_str());
+            return false;
+        }
+
+        script_enums.emplace(enum_name,std::move(script_enum));
+        return true;
+    }
+
+    const ScriptEnum *Module::GetScriptEnum(const std::string &enum_name) const
+    {
+        const auto it=script_enums.find(enum_name);
+        if(it==script_enums.end())
+            return nullptr;
+        return &it->second;
+    }
+
     PropertyMap *Module::GetPropertyMap(const std::string &name)
     {
         const auto it=prop_map.find(name);
@@ -182,13 +202,28 @@ namespace devil
 
         bytecode_module.SetHostModule(this);
 
-        auto is_type_token=[](TokenType type)
+        auto is_type_token=[this](TokenType type,const std::string &name)
         {
-            return type==TokenType::Bool || type==TokenType::String
+            if(type==TokenType::Bool || type==TokenType::String
                 || type==TokenType::Int || type==TokenType::UInt
                 || type==TokenType::Int8 || type==TokenType::UInt8
                 || type==TokenType::Int16 || type==TokenType::UInt16
-                || type==TokenType::Float || type==TokenType::Void;
+                || type==TokenType::Float || type==TokenType::Void)
+                return true;
+
+            if(type==TokenType::Identifier)
+                return GetScriptEnum(name)!=nullptr;
+
+            return false;
+        };
+
+        auto resolve_type=[this](TokenType type,const std::string &name)
+        {
+            if(type!=TokenType::Identifier)
+                return type;
+            if(const ScriptEnum *enum_def=GetScriptEnum(name))
+                return enum_def->underlying;
+            return type;
         };
 
         while(true)
@@ -201,7 +236,7 @@ namespace devil
                 return(false);
             }
 
-            if(is_type_token(type))
+            if(is_type_token(type,name))
             {
                 std::string func_name;
                 if(parse.GetToken(func_name)!=TokenType::Identifier)
@@ -213,7 +248,7 @@ namespace devil
                 if(script_func.find(func_name)==script_func.end())   //查找是否有同样的函数名存在
                 {
                     Func *func=new Func(this,func_name);
-                    func->SetReturnType(type);
+                    func->SetReturnType(resolve_type(type,name));
 
                     LogInfo("%s",("function "+func_name+"()\n{").c_str());
 
@@ -252,7 +287,8 @@ namespace devil
             else
             if(type==TokenType::Enum)
             {
-//                parse.ParseEnum();
+                if(!parse.ParseEnum())
+                    return false;
             }//if type == TokenType::Enum
             else
             if(type==TokenType::Const)
@@ -288,6 +324,7 @@ namespace devil
         script_func.clear();
         string_list.clear();
         bytecode_module.Clear();
+        script_enums.clear();
     }
 
 #ifdef _DEBUG

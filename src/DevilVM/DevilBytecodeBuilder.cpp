@@ -536,6 +536,9 @@ namespace hgl::devil
         if(const auto *block=dynamic_cast<const BlockStmt *>(stmt))
             return BuildBlock(func,block);
 
+        if(dynamic_cast<const EnumDeclStmt *>(stmt))
+            return true;
+
         if(const auto *var=dynamic_cast<const VarDeclStmt *>(stmt))
         {
             if(GetLocal(var->GetName())>=0)

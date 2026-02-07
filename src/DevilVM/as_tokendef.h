@@ -84,6 +84,7 @@ namespace hgl::devil
         {"["        , TokenType::OpenBracket},
         {"]"        , TokenType::CloseBracket},
         {"?"        , TokenType::Question},
+      {"::"       , TokenType::Scope},
         {":"        , TokenType::Colon},
         {"=="       , TokenType::Equal},
         {"!="       , TokenType::NotEqual},

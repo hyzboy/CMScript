@@ -706,7 +706,7 @@ namespace hgl::devil
     ExecResult EnumDeclStmt::Exec(ExecContext &ctx) const
     {
         (void)ctx;
-        return ExecResult::Error("enum declaration is not implemented");
+        return ExecResult::Normal();
     }
 
     ExecResult BlockStmt::Exec(ExecContext &ctx) const

@@ -38,9 +38,9 @@ namespace hgl::devil
         std::unique_ptr<Stmt> ParseDoWhile();
         std::unique_ptr<Stmt> ParseFor();
         std::unique_ptr<Stmt> ParseSwitch();
-        std::unique_ptr<Stmt> ParseEnum();
 
-        bool IsTypeToken(TokenType) const;
+        bool IsTypeToken(TokenType,const std::string &) const;
+        TokenType ResolveTypeToken(TokenType,const std::string &) const;
         int GetPrecedence(TokenType) const;
 
     public:
@@ -50,6 +50,8 @@ namespace hgl::devil
         TokenType CheckToken(std::string &);   //检测下一个token,自动跳过注释、换行、空格,但不取出
 
         bool GetToken(TokenType,std::string &);    //找某一种Token为止
+
+        std::unique_ptr<Stmt> ParseEnum();
 
         const SourceLocation &GetLastStatementLocation() const{return last_stmt_loc;}
         bool ParseFunc(Func *);        //解析一个函数

@@ -80,6 +80,7 @@ namespace hgl::devil
 
         Question,            // ?
         Colon,               // :
+        Scope,               // ::
 
         // Reserved keywords
         If,                  // if

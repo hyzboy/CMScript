@@ -64,6 +64,12 @@ namespace hgl::devil
     struct PropertyMap;
     struct FuncMap;
 
+    struct ScriptEnum
+    {
+        TokenType underlying=TokenType::Int;
+        ankerl::unordered_dense::map<std::string,AstValue> values;
+    };
+
     /**
      * 虚拟机处理模块
      */
@@ -75,6 +81,7 @@ namespace hgl::devil
         ankerl::unordered_dense::map<std::string,FuncMap *>       func_map;       //函数映射表
         ankerl::unordered_dense::map<std::string,Func *>          script_func;    //脚本函数表
         ankerl::unordered_dense::map<std::string,EnumDef *>       enum_map;       //枚举映射表
+        ankerl::unordered_dense::map<std::string,ScriptEnum>      script_enums;   //脚本枚举表
         BytecodeModule                                            bytecode_module;
         bool                                                      use_bytecode=true;
 
@@ -137,6 +144,8 @@ namespace hgl::devil
         virtual bool BuildBytecode();                                          ///<从现有脚本函数生成字节码
 
         virtual bool AddEnum(const char *,EnumDef *);
+        bool AddScriptEnum(const std::string &,ScriptEnum);
+        const ScriptEnum *GetScriptEnum(const std::string &) const;
 
         virtual void Clear();                                                  ///<清除所有模块和映射
 

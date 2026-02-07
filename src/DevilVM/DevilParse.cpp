@@ -167,13 +167,33 @@ namespace hgl::devil
         }
     }
 
-    bool Parse::IsTypeToken(TokenType type) const
+    bool Parse::IsTypeToken(TokenType type,const std::string &name) const
     {
-        return type==TokenType::Bool || type==TokenType::String
+        if(type==TokenType::Bool || type==TokenType::String
             || type==TokenType::Int || type==TokenType::UInt
             || type==TokenType::Int8 || type==TokenType::UInt8
             || type==TokenType::Int16 || type==TokenType::UInt16
-            || type==TokenType::Float;
+            || type==TokenType::Float)
+            return true;
+
+        if(type==TokenType::Identifier && module)
+            return module->GetScriptEnum(name)!=nullptr;
+
+        return false;
+    }
+
+    TokenType Parse::ResolveTypeToken(TokenType type,const std::string &name) const
+    {
+        if(type!=TokenType::Identifier)
+            return type;
+
+        if(!module)
+            return type;
+
+        if(const ScriptEnum *enum_def=module->GetScriptEnum(name))
+            return enum_def->underlying;
+
+        return type;
     }
 
     int Parse::GetPrecedence(TokenType type) const
@@ -219,7 +239,7 @@ namespace hgl::devil
             GetToken(TokenType::OpenParanthesis,tmp);
             std::string type_name;
             const TokenType target_type=GetToken(type_name);
-            if(!IsTypeToken(target_type))
+            if(!IsTypeToken(target_type,type_name))
             {
                 LogError("%s","cast target must be a type");
                 return nullptr;
@@ -229,7 +249,7 @@ namespace hgl::devil
             if(!expr)
                 return nullptr;
             GetToken(TokenType::CloseParanthesis,tmp);
-            return std::make_unique<CastExpr>(target_type,std::move(expr));
+            return std::make_unique<CastExpr>(ResolveTypeToken(target_type,type_name),std::move(expr));
         }
 
         if(type==TokenType::Identifier)
@@ -265,7 +285,7 @@ namespace hgl::devil
 
             std::string tmp;
             TokenType next=GetToken(tmp);
-            if(IsTypeToken(next) && CheckToken(name)==TokenType::CloseParanthesis)
+            if(IsTypeToken(next,tmp) && CheckToken(name)==TokenType::CloseParanthesis)
             {
                 GetToken(TokenType::CloseParanthesis,name);
                 SourceLocationInfo loc=BuildSourceLocation(source_start,paren_start?paren_start:source_cur);
@@ -276,7 +296,7 @@ namespace hgl::devil
                 std::unique_ptr<Expr> expr=ParseUnary();
                 if(!expr)
                     return nullptr;
-                return std::make_unique<CastExpr>(next,std::move(expr));
+                return std::make_unique<CastExpr>(ResolveTypeToken(next,tmp),std::move(expr));
             }
 
             source_cur=saved_cur;
@@ -357,6 +377,39 @@ namespace hgl::devil
     {
         std::string tmp;
         TokenType next=CheckToken(tmp);
+
+        if(next==TokenType::Scope)
+        {
+            GetToken(tmp); // '::'
+            std::string value_name;
+            if(GetToken(value_name)!=TokenType::Identifier)
+            {
+                LogError("%s","enum value name expected after '::'");
+                return nullptr;
+            }
+
+            if(!module)
+            {
+                LogError("%s","missing module for enum lookup");
+                return nullptr;
+            }
+
+            const ScriptEnum *enum_def=module->GetScriptEnum(name);
+            if(!enum_def)
+            {
+                LogError("%s",("unknown enum: "+name).c_str());
+                return nullptr;
+            }
+
+            const auto it=enum_def->values.find(value_name);
+            if(it==enum_def->values.end())
+            {
+                LogError("%s",("unknown enum value: "+name+"::"+value_name).c_str());
+                return nullptr;
+            }
+
+            return std::make_unique<LiteralExpr>(it->second);
+        }
 
         if(next!=TokenType::OpenParanthesis)
             return std::make_unique<IdentifierExpr>(name);
@@ -521,10 +574,10 @@ namespace hgl::devil
         TokenType next=CheckToken(tmp);
         if(next!=TokenType::EndStatement)
         {
-            if(IsTypeToken(next))
+            if(IsTypeToken(next,tmp))
             {
                 GetToken(tmp);
-                init=ParseVarDecl(next);
+                init=ParseVarDecl(ResolveTypeToken(next,tmp));
             }
             else
             {
@@ -649,24 +702,211 @@ namespace hgl::devil
 
     std::unique_ptr<Stmt> Parse::ParseEnum()
     {
-        std::string tmp;
-        GetToken(tmp); // enum name
-        GetToken(TokenType::StartStatementBlock,tmp);
-        int depth=1;
-        while(depth>0)
+        std::string enum_name;
+        if(GetToken(enum_name)!=TokenType::Identifier)
         {
+            LogError("%s","enum name expected");
+            return nullptr;
+        }
+
+        std::string tmp;
+        if(GetToken(tmp)!=TokenType::Colon)
+        {
+            LogError("%s","enum underlying type must be specified with ':'");
+            return nullptr;
+        }
+
+        std::string type_name;
+        TokenType underlying=GetToken(type_name);
+        if(underlying!=TokenType::Int && underlying!=TokenType::UInt)
+        {
+            LogError("%s","enum underlying type must be int or uint");
+            return nullptr;
+        }
+
+        if(!GetToken(TokenType::StartStatementBlock,tmp))
+        {
+            LogError("%s","enum missing '{'");
+            return nullptr;
+        }
+
+        ScriptEnum enum_def;
+        enum_def.underlying=underlying;
+
+        bool has_value=false;
+        int64_t last_signed=-1;
+        uint64_t last_unsigned=0;
+
+        auto parse_enum_value=[&](int32_t &out_i,uint32_t &out_u)->bool
+        {
+            bool negative=false;
             TokenType t=GetToken(tmp);
-            if(t==TokenType::StartStatementBlock)
-                depth++;
-            else
+            if(t==TokenType::Minus)
+            {
+                negative=true;
+                t=GetToken(tmp);
+            }
+
+            if(t==TokenType::IntConstant)
+            {
+                long long v=std::stoll(tmp);
+                if(negative)
+                    v=-v;
+                out_i=static_cast<int32_t>(v);
+                out_u=static_cast<uint32_t>(v);
+                return true;
+            }
+
+            if(t==TokenType::BitsConstant)
+            {
+                if(negative)
+                {
+                    LogError("%s","enum value cannot be negative hex");
+                    return false;
+                }
+                unsigned long long v=std::stoull(tmp,nullptr,0);
+                out_i=static_cast<int32_t>(v);
+                out_u=static_cast<uint32_t>(v);
+                return true;
+            }
+
+            if(t==TokenType::Identifier)
+            {
+                std::string enum_ref=tmp;
+                if(CheckToken(tmp)!=TokenType::Scope)
+                {
+                    LogError("%s","enum value must be scoped with '::'");
+                    return false;
+                }
+                GetToken(tmp); // '::'
+
+                std::string value_name;
+                if(GetToken(value_name)!=TokenType::Identifier)
+                {
+                    LogError("%s","enum value name expected after '::'");
+                    return false;
+                }
+
+                const ScriptEnum *ref_enum=nullptr;
+                if(enum_ref==enum_name)
+                {
+                    ref_enum=&enum_def;
+                }
+                else if(module)
+                {
+                    ref_enum=module->GetScriptEnum(enum_ref);
+                }
+
+                if(!ref_enum)
+                {
+                    LogError("%s",("unknown enum: "+enum_ref).c_str());
+                    return false;
+                }
+
+                const auto it=ref_enum->values.find(value_name);
+                if(it==ref_enum->values.end())
+                {
+                    LogError("%s",("unknown enum value: "+enum_ref+"::"+value_name).c_str());
+                    return false;
+                }
+
+                out_i=it->second.ToInt();
+                out_u=it->second.ToUInt();
+                return true;
+            }
+
+            LogError("%s","enum value must be integer literal or scoped enum value");
+            return false;
+        };
+
+        while(true)
+        {
+            TokenType t=CheckToken(tmp);
             if(t==TokenType::EndStatementBlock)
-                depth--;
-            else
+            {
+                GetToken(tmp);
+                break;
+            }
             if(t==TokenType::End)
                 break;
+            if(t==TokenType::ListSeparator)
+            {
+                GetToken(tmp);
+                continue;
+            }
+
+            std::string item_name;
+            if(GetToken(item_name)!=TokenType::Identifier)
+            {
+                LogError("%s","enum item name expected");
+                return nullptr;
+            }
+
+            if(enum_def.values.find(item_name)!=enum_def.values.end())
+            {
+                LogError("%s",("duplicate enum item: "+item_name).c_str());
+                return nullptr;
+            }
+
+            int32_t value_i=0;
+            uint32_t value_u=0;
+            TokenType next=CheckToken(tmp);
+            if(next==TokenType::Assignment)
+            {
+                GetToken(tmp);
+                if(!parse_enum_value(value_i,value_u))
+                    return nullptr;
+                if(underlying==TokenType::UInt && value_i<0)
+                {
+                    LogError("%s","uint enum value cannot be negative");
+                    return nullptr;
+                }
+            }
+            else
+            {
+                if(underlying==TokenType::Int)
+                    value_i=has_value?static_cast<int32_t>(last_signed+1):0;
+                else
+                    value_u=has_value?static_cast<uint32_t>(last_unsigned+1):0u;
+            }
+
+            if(underlying==TokenType::Int)
+            {
+                enum_def.values.emplace(item_name,AstValue::MakeInt(value_i));
+                last_signed=value_i;
+            }
+            else
+            {
+                enum_def.values.emplace(item_name,AstValue::MakeUInt(value_u));
+                last_unsigned=value_u;
+            }
+            has_value=true;
+
+            TokenType sep=CheckToken(tmp);
+            if(sep==TokenType::ListSeparator)
+            {
+                GetToken(tmp);
+                continue;
+            }
+            if(sep==TokenType::EndStatementBlock)
+            {
+                GetToken(tmp);
+                break;
+            }
         }
+
         if(CheckToken(tmp)==TokenType::EndStatement)
             GetToken(tmp);
+
+        if(!module)
+        {
+            LogError("%s","missing module for enum definition");
+            return nullptr;
+        }
+
+        if(!module->AddScriptEnum(enum_name,std::move(enum_def)))
+            return nullptr;
+
         return std::make_unique<EnumDeclStmt>();
     }
 
@@ -759,10 +999,10 @@ namespace hgl::devil
             return std::make_unique<ContinueStmt>();
         }
 
-        if(IsTypeToken(type))
+        if(IsTypeToken(type,name))
         {
             GetToken(name);
-            return ParseVarDecl(type);
+            return ParseVarDecl(ResolveTypeToken(type,name));
         }
 
         if(type==TokenType::Identifier)
@@ -869,7 +1109,7 @@ namespace hgl::devil
             {
                 std::string type_name;
                 const TokenType type=GetToken(type_name);
-                if(!IsTypeToken(type))
+                if(!IsTypeToken(type,type_name))
                 {
                     SourceLocationInfo loc=BuildSourceLocation(source_start,last_token_start?last_token_start:source_cur);
                     LogError("%s",("function param type expected at "
@@ -906,7 +1146,7 @@ namespace hgl::devil
                     return false;
                 }
 
-                params.push_back(Func::Param{type,param_name});
+                params.push_back(Func::Param{ResolveTypeToken(type,type_name),param_name});
 
                 TokenType sep=CheckToken(name);
                 if(sep==TokenType::ListSeparator)
