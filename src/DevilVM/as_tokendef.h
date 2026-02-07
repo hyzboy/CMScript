@@ -1,4 +1,4 @@
-/*
+﻿/*
    AngelCode Scripting Library
    Copyright (c) 2003-2007 Andreas Jonsson
 
@@ -39,254 +39,119 @@
 #ifndef AS_TOKENDEF_H
 #define AS_TOKENDEF_H
 
-namespace angle_script
+#include<hgl/devil/DevilToken.h>
+
+namespace hgl::devil
 {
-    enum eTokenType
-    {
-        ttUnrecognizedToken,
-
-        ttEnd,                 // End of file
-
-        // White space and comments
-        ttWhiteSpace,          // ' ', '\t', '\r', '\n'
-        ttOnelineComment,      // // \n
-        ttMultilineComment,    // /* */
-
-        // Atoms
-        ttIdentifier,            // abc123
-        ttIntConstant,           // 1234
-        ttFloatConstant,         // 12.34e56f
-        ttDoubleConstant,        // 12.34e56
-        ttStringConstant,        // "123"
-        ttHeredocStringConstant, // """text"""
-        ttNonTerminatedStringConstant, // "123
-        ttBitsConstant,          // 0xFFFF
-
-        // Math operators
-        ttPlus,                // +
-        ttMinus,               // -
-        ttStar,                // *
-        ttSlash,               // /
-        ttPercent,             // %
-
-        ttHandle,              // #
-
-        ttAddAssign,           // +=
-        ttSubAssign,           // -=
-        ttMulAssign,           // *=
-        ttDivAssign,           // /=
-        ttModAssign,           // %=
-
-        ttOrAssign,            // |=
-        ttAndAssign,           // &=
-        ttXorAssign,           // ^=
-        ttShiftLeftAssign,     // <<=
-        ttShiftRightLAssign,   // >>=
-        ttShiftRightAAssign,   // >>>=
-
-        ttInc,                 // ++
-        ttDec,                 // --
-
-        ttDot,                 // .
-
-        // Statement tokens
-        ttAssignment,          // =
-        ttEndStatement,        // ;
-        ttListSeparator,       // ,
-        ttStartStatementBlock, // {
-        ttEndStatementBlock,   // }
-        ttOpenParanthesis,     // (
-        ttCloseParanthesis,    // )
-        ttOpenBracket,         // [
-        ttCloseBracket,        // ]
-        ttAmp,                 // &
-
-        // Bitwise operators
-        ttBitOr,               // |
-        ttBitNot,              // ~
-        ttBitXor,              // ^
-        ttBitShiftLeft,        // <<
-        ttBitShiftRight,       // >>
-        ttBitShiftRightArith,  // >>>
-
-        // Compare operators
-        ttEqual,               // ==
-        ttNotEqual,            // !=
-        ttLessThan,            // <
-        ttGreaterThan,         // >
-        ttLessThanOrEqual,     // <=
-        ttGreaterThanOrEqual,  // >=
-
-        ttQuestion,            // ?
-        ttColon,               // :
-
-        // Reserved keywords
-        ttIf,                  // if
-        ttElse,                // else
-        ttFor,                 // for
-        ttWhile,               // while
-        ttBool,                // bool
-        ttImport,              // import
-
-        ttGoto,                // goto
-
-        ttEnum,                // enum
-        ttFunc,                // function
-        ttString,              // string
-
-        ttInt,                 // int
-        ttInt8,                // int8
-        ttInt16,               // int16
-        ttInt64,               // int64
-        ttInterface,           // interface
-        ttUInt,                // uint
-        ttUInt8,               // uint8
-        ttUInt16,              // uint16
-        ttUInt64,              // uint64
-        ttFloat,               // float
-        ttVoid,                // void
-        ttTrue,                // true
-        ttFalse,               // false
-        ttReturn,              // return
-        ttNot,                 // not
-        ttAnd,                 // and
-        ttOr,                  // or
-        ttXor,                 // xor
-        ttBreak,               // break
-        ttContinue,            // continue
-        ttConst,               // const
-        ttDo,                  // do
-        ttDouble,              // double
-        ttSwitch,              // switch
-        ttCase,                // case
-        ttDefault,             // default
-        ttIn,                  // in
-        ttOut,                 // out
-        ttInOut,               // inout
-        ttNull,                // null
-        ttClass,               // class
-        ttCast                 // cast
-    };
-
-    struct sTokenWord
+    struct TokenWord
     {
         const char *word;
-        eTokenType   tokenType;
+        TokenType   tokenType;
     };
 
-    constexpr sTokenWord tokenWords[] =
+    constexpr TokenWord tokenWords[] =
     {
-        {"+"        , ttPlus},
-        {"-"        , ttMinus},
-        {"*"        , ttStar},
-        {"/"        , ttSlash},
-        {"%"        , ttPercent},
-        {"="        , ttAssignment},
-        {"."        , ttDot},
-        {"+="       , ttAddAssign},
-        {"-="       , ttSubAssign},
-        {"*="       , ttMulAssign},
-        {"/="       , ttDivAssign},
-        {"%="       , ttModAssign},
-        {"|="       , ttOrAssign},
-        {"&="       , ttAndAssign},
-        {"^="       , ttXorAssign},
-        {"<<="      , ttShiftLeftAssign},
-        {">>="      , ttShiftRightLAssign},
-        {">>>="     , ttShiftRightAAssign},
-        {"|"        , ttBitOr},
-        {"~"        , ttBitNot},
-        {"^"        , ttBitXor},
-        {"<<"       , ttBitShiftLeft},
-        {">>"       , ttBitShiftRight},
-        {">>>"      , ttBitShiftRightArith},
-        {";"        , ttEndStatement},
-        {","        , ttListSeparator},
-        {"{"        , ttStartStatementBlock},
-        {"}"        , ttEndStatementBlock},
-        {"("        , ttOpenParanthesis},
-        {")"        , ttCloseParanthesis},
-        {"["        , ttOpenBracket},
-        {"]"        , ttCloseBracket},
-        {"?"        , ttQuestion},
-        {":"        , ttColon},
-        {"=="       , ttEqual},
-        {"!="       , ttNotEqual},
-        {"<"        , ttLessThan},
-        {">"        , ttGreaterThan},
-        {"<="       , ttLessThanOrEqual},
-        {">="       , ttGreaterThanOrEqual},
-        {"++"       , ttInc},
-        {"--"       , ttDec},
-        {"&"        , ttAmp},
-        {"!"        , ttNot},
-        {"||"       , ttOr},
-        {"&&"       , ttAnd},
-        {"^^"       , ttXor},
-        {"@"        , ttHandle},
-        {"and"      , ttAnd},
-    #ifdef AS_DEPRECATED
-        {"bits"     , ttUInt},
-        {"bits8"    , ttUInt8},
-        {"bits16"   , ttUInt16},
-        {"bits32"   , ttUInt},
-    #endif
-        {"bool"     , ttBool},
-        {"break"    , ttBreak},
-        {"cast"     , ttCast},
-        {"const"    , ttConst},
-        {"continue" , ttContinue},
-        {"do"       , ttDo},
-    #ifdef  AS_USE_DOUBLE_AS_FLOAT
-        {"double"   , ttFloat},
-    #else
-        {"double"   , ttDouble},
-    #endif
-        {"else"     , ttElse},
-        {"false"    , ttFalse},
-        {"float"    , ttFloat},
-        {"for"      , ttFor},
-        {"goto"     , ttGoto},
-        {"GOTO"     , ttGoto},
-        {"if"       , ttIf},
-        {"in"       , ttIn},
-        {"inout"    , ttInOut},
-        {"import"   , ttImport},
+        {"+"        , TokenType::Plus},
+        {"-"        , TokenType::Minus},
+        {"*"        , TokenType::Star},
+        {"/"        , TokenType::Slash},
+        {"%"        , TokenType::Percent},
+        {"="        , TokenType::Assignment},
+        {"."        , TokenType::Dot},
+        {"+="       , TokenType::AddAssign},
+        {"-="       , TokenType::SubAssign},
+        {"*="       , TokenType::MulAssign},
+        {"/="       , TokenType::DivAssign},
+        {"%="       , TokenType::ModAssign},
+        {"|="       , TokenType::OrAssign},
+        {"&="       , TokenType::AndAssign},
+        {"^="       , TokenType::XorAssign},
+        {"<<="      , TokenType::ShiftLeftAssign},
+        {">>="      , TokenType::ShiftRightLAssign},
+        {">>>="     , TokenType::ShiftRightAAssign},
+        {"|"        , TokenType::BitOr},
+        {"~"        , TokenType::BitNot},
+        {"^"        , TokenType::BitXor},
+        {"<<"       , TokenType::BitShiftLeft},
+        {">>"       , TokenType::BitShiftRight},
+        {">>>"      , TokenType::BitShiftRightArith},
+        {";"        , TokenType::EndStatement},
+        {","        , TokenType::ListSeparator},
+        {"{"        , TokenType::StartStatementBlock},
+        {"}"        , TokenType::EndStatementBlock},
+        {"("        , TokenType::OpenParanthesis},
+        {")"        , TokenType::CloseParanthesis},
+        {"["        , TokenType::OpenBracket},
+        {"]"        , TokenType::CloseBracket},
+        {"?"        , TokenType::Question},
+        {":"        , TokenType::Colon},
+        {"=="       , TokenType::Equal},
+        {"!="       , TokenType::NotEqual},
+        {"<"        , TokenType::LessThan},
+        {">"        , TokenType::GreaterThan},
+        {"<="       , TokenType::LessThanOrEqual},
+        {">="       , TokenType::GreaterThanOrEqual},
+        {"++"       , TokenType::Inc},
+        {"--"       , TokenType::Dec},
+        {"&"        , TokenType::Amp},
+        {"!"        , TokenType::Not},
+        {"||"       , TokenType::Or},
+        {"&&"       , TokenType::And},
+        {"^^"       , TokenType::Xor},
+        {"@"        , TokenType::Handle},
+        {"and"      , TokenType::And},
+        {"bool"     , TokenType::Bool},
+        {"break"    , TokenType::Break},
+        {"cast"     , TokenType::Cast},
+        {"const"    , TokenType::Const},
+        {"continue" , TokenType::Continue},
+        {"do"       , TokenType::Do},
+        {"double"   , TokenType::Double},
+        {"else"     , TokenType::Else},
+        {"false"    , TokenType::False},
+        {"float"    , TokenType::Float},
+        {"for"      , TokenType::For},
+        {"goto"     , TokenType::Goto},
+        {"if"       , TokenType::If},
+        {"in"       , TokenType::In},
+        {"inout"    , TokenType::InOut},
+        {"import"   , TokenType::Import},
 
-        {"enum"     , ttEnum},
-        {"func"     , ttFunc},
-        {"string"   , ttString},
+        {"enum"     , TokenType::Enum},
+        {"func"     , TokenType::Func},
+        {"string"   , TokenType::String},
 
-        {"int"      , ttInt},
-        {"int8"     , ttInt8},
-        {"int16"    , ttInt16},
-        {"int32"    , ttInt},
-        {"int64"    , ttInt64},
-        {"interface", ttInterface},
-        {"not"      , ttNot},
-        {"null"     , ttNull},
-        {"or"       , ttOr},
-        {"out"      , ttOut},
-        {"return"   , ttReturn},
-        {"true"     , ttTrue},
-        {"void"     , ttVoid},
-        {"while"    , ttWhile},
-        {"uint"     , ttUInt},
-        {"uint8"    , ttUInt8},
-        {"uint16"   , ttUInt16},
-        {"uint32"   , ttUInt},
-        {"uint64"   , ttUInt64},
-        {"switch"   , ttSwitch},
-        {"class"    , ttClass},
-        {"case"     , ttCase},
-        {"CASE"     , ttCase},
-        {"default"  , ttDefault},
-        {"xor"      , ttXor},
+        {"int"      , TokenType::Int},
+        {"int8"     , TokenType::Int8},
+        {"int16"    , TokenType::Int16},
+        {"int32"    , TokenType::Int},
+        {"int64"    , TokenType::Int64},
+        {"interface", TokenType::Interface},
+        {"not"      , TokenType::Not},
+        {"null"     , TokenType::Null},
+        {"or"       , TokenType::Or},
+        {"out"      , TokenType::Out},
+        {"return"   , TokenType::Return},
+        {"true"     , TokenType::True},
+        {"void"     , TokenType::Void},
+        {"while"    , TokenType::While},
+        {"uint"     , TokenType::UInt},
+        {"uint8"    , TokenType::UInt8},
+        {"uint16"   , TokenType::UInt16},
+        {"uint32"   , TokenType::UInt},
+        {"uint64"   , TokenType::UInt64},
+        {"switch"   , TokenType::Switch},
+        {"class"    , TokenType::Class},
+        {"case"     , TokenType::Case},
+        {"CASE"     , TokenType::Case},
+        {"default"  , TokenType::Default},
+        {"xor"      , TokenType::Xor},
     };
 
-    constexpr int       numTokenWords   =sizeof(tokenWords)/sizeof(sTokenWord);
+    constexpr int   numTokenWords   =sizeof(tokenWords)/sizeof(TokenWord);
 
-    constexpr char   whiteSpace[]    =" \t\r\n\xEF\xBB\xBF";
-    constexpr int       whiteSpaceNumber=sizeof(whiteSpace)/sizeof(whiteSpace[0])-1;
-}//namespace angle_script
+    constexpr char  whiteSpace[]    =" \t\r\n\xEF\xBB\xBF";
+    constexpr int   whiteSpaceNumber=sizeof(whiteSpace)/sizeof(whiteSpace[0])-1;
+}//namespace hgl::devil
 #endif
+

@@ -42,9 +42,9 @@
 #include <memory.h>
 #endif
 #include <assert.h> // assert()
-#include<hgl/type/Str.Comp.h> // strcmp()
+#include <hgl/type/Str.Comp.h> // strcmp()
 
-namespace angle_script
+namespace hgl::devil
 {
     asCTokenizer::asCTokenizer()
     {
@@ -54,21 +54,21 @@ namespace angle_script
     {
     }
 
-    const char *asGetTokenDefinition(int tokenType)
+    const char *asGetTokenDefinition(TokenType tokenType)
     {
-        if( tokenType == ttUnrecognizedToken            ) return "<unrecognized token>";
-        if( tokenType == ttEnd                          ) return "<end of file>";
-        if( tokenType == ttWhiteSpace                   ) return "<white space>";
-        if( tokenType == ttOnelineComment               ) return "<one line comment>";
-        if( tokenType == ttMultilineComment             ) return "<multiple lines comment>";
-        if( tokenType == ttIdentifier                   ) return "<identifier>";
-        if( tokenType == ttIntConstant                  ) return "<integer constant>";
-        if( tokenType == ttFloatConstant                ) return "<float constant>";
-        if( tokenType == ttDoubleConstant               ) return "<double constant>";
-        if( tokenType == ttStringConstant               ) return "<string constant>";
-        if( tokenType == ttNonTerminatedStringConstant  ) return "<unterminated string constant>";
-        if( tokenType == ttBitsConstant                 ) return "<bits constant>";
-        if( tokenType == ttHeredocStringConstant        ) return "<heredoc string constant>";
+        if( tokenType == TokenType::UnrecognizedToken            ) return "<unrecognized token>";
+        if( tokenType == TokenType::End                          ) return "<end of file>";
+        if( tokenType == TokenType::WhiteSpace                   ) return "<white space>";
+        if( tokenType == TokenType::OnelineComment               ) return "<one line comment>";
+        if( tokenType == TokenType::MultilineComment             ) return "<multiple lines comment>";
+        if( tokenType == TokenType::Identifier                   ) return "<identifier>";
+        if( tokenType == TokenType::IntConstant                  ) return "<integer constant>";
+        if( tokenType == TokenType::FloatConstant                ) return "<float constant>";
+        if( tokenType == TokenType::DoubleConstant               ) return "<double constant>";
+        if( tokenType == TokenType::StringConstant               ) return "<string constant>";
+        if( tokenType == TokenType::NonTerminatedStringConstant  ) return "<unterminated string constant>";
+        if( tokenType == TokenType::BitsConstant                 ) return "<bits constant>";
+        if( tokenType == TokenType::HeredocStringConstant        ) return "<heredoc string constant>";
 
         for( hgl::uint n = 0; n < numTokenWords; n++ )
             if( tokenWords[n].tokenType == tokenType )
@@ -77,7 +77,7 @@ namespace angle_script
         return 0;
     }
 
-    const char *GetTokenName(eTokenType type)
+    const char *GetTokenName(TokenType type)
     {
         for(hgl::uint i=0;i<numTokenWords;i++)
             if(tokenWords[i].tokenType==type)
@@ -86,7 +86,7 @@ namespace angle_script
         return(nullptr);
     }
 
-    eTokenType asCTokenizer::GetToken(const char *source, hgl::uint sourceLength, hgl::uint *tokenLength)
+    TokenType asCTokenizer::GetToken(const char *source, hgl::uint sourceLength, hgl::uint *tokenLength)
     {
 //      assert(source != 0);
 //      assert(tokenLength != 0);
@@ -113,7 +113,7 @@ namespace angle_script
         // If none of the above this is an unrecognized token
         // We can find the length of the token by advancing
         // one step and trying to identify a token there
-        tokenType = ttUnrecognizedToken;
+        tokenType = TokenType::UnrecognizedToken;
         tokenLength = 1;
 
         return -1;
@@ -141,7 +141,7 @@ namespace angle_script
 
         if( n > 0 )
         {
-            tokenType = ttWhiteSpace;
+            tokenType = TokenType::WhiteSpace;
             tokenLength = n;
             return true;
         }
@@ -169,7 +169,7 @@ namespace angle_script
                     break;
             }
 
-            tokenType = ttOnelineComment;
+            tokenType = TokenType::OnelineComment;
             tokenLength = n+1;
 
             return true;
@@ -187,7 +187,7 @@ namespace angle_script
                     break;
             }
 
-            tokenType = ttMultilineComment;
+            tokenType = TokenType::MultilineComment;
             tokenLength = n+1;
 
             return true;
@@ -213,7 +213,7 @@ namespace angle_script
                         break;
                 }
 
-                tokenType = ttBitsConstant;
+                tokenType = TokenType::BitsConstant;
                 tokenLength = n;
                 return true;
             }
@@ -249,22 +249,22 @@ namespace angle_script
 
                 if( n < sourceLength && (source[n] == 'f' || source[n] == 'F') )
                 {
-                    tokenType = ttFloatConstant;
+                    tokenType = TokenType::FloatConstant;
                     tokenLength = n + 1;
                 }
                 else
                 {
-    #ifdef AS_USE_DOUBLE_AS_FLOAT
-                    tokenType = ttFloatConstant;
-    #else
-                    tokenType = ttDoubleConstant;
-    #endif
+#ifdef AS_USE_DOUBLE_AS_FLOAT
+                    tokenType = TokenType::FloatConstant;
+#else
+                    tokenType = TokenType::DoubleConstant;
+#endif
                     tokenLength = n;
                 }
                 return true;
             }
 
-            tokenType = ttIntConstant;
+            tokenType = TokenType::IntConstant;
             tokenLength = n;
             return true;
         }
@@ -279,14 +279,14 @@ namespace angle_script
                 if( source[n] == '\n' ) break;
                 if( source[n] == '\'' && evenSlashes )
                 {
-                    tokenType = ttIntConstant;
+                    tokenType = TokenType::IntConstant;
                     tokenLength = n+1;
                     return true;
                 }
                 if( source[n] == '\\' ) evenSlashes = !evenSlashes; else evenSlashes = true;
             }
 
-            tokenType = ttNonTerminatedStringConstant;
+            tokenType = TokenType::NonTerminatedStringConstant;
             tokenLength = n-1;
 
             return true;
@@ -308,7 +308,7 @@ namespace angle_script
                         break;
                 }
 
-                tokenType = ttHeredocStringConstant;
+                tokenType = TokenType::HeredocStringConstant;
                 tokenLength = n+3;
             }
             else
@@ -321,14 +321,14 @@ namespace angle_script
                     if( source[n] == '\n' ) break;
                     if( source[n] == '"' && evenSlashes )
                     {
-                        tokenType = ttStringConstant;
+                        tokenType = TokenType::StringConstant;
                         tokenLength = n+1;
                         return true;
                     }
                     if( source[n] == '\\' ) evenSlashes = !evenSlashes; else evenSlashes = true;
                 }
 
-                tokenType = ttNonTerminatedStringConstant;
+                tokenType = TokenType::NonTerminatedStringConstant;
                 tokenLength = n;
             }
 
@@ -345,7 +345,7 @@ namespace angle_script
             (source[0] >= 'A' && source[0] <= 'Z') ||
             (source[0] == '_') )
         {
-            tokenType = ttIdentifier;
+            tokenType = TokenType::Identifier;
             tokenLength = 1;
 
             for( hgl::uint n = 1; n < sourceLength; n++ )
@@ -450,4 +450,3 @@ namespace angle_script
         return false;
     }
 }
-

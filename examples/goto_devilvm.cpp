@@ -1,5 +1,4 @@
 #include <iostream>
-
 #include <hgl/devil/DevilVM.h>
 
 namespace

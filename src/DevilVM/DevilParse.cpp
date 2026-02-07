@@ -8,6 +8,57 @@ namespace hgl::devil
 {
     namespace
     {
+        struct SourceLocationInfo
+        {
+            int line=1;
+            int column=1;
+            std::string line_text;
+            std::string caret_line;
+        };
+
+        SourceLocationInfo BuildSourceLocation(const char *source_start,const char *token_start)
+        {
+            SourceLocationInfo info;
+
+            if(!source_start||!token_start||token_start<source_start)
+                return info;
+
+            const char *line_start=source_start;
+            const char *p=source_start;
+
+            while(p<token_start)
+            {
+                if(*p=='\r')
+                {
+                    info.line++;
+                    if(p+1<token_start && p[1]=='\n')
+                        ++p;
+                    line_start=p+1;
+                }
+                else if(*p=='\n')
+                {
+                    info.line++;
+                    line_start=p+1;
+                }
+                ++p;
+            }
+
+            info.column=int(token_start-line_start)+1;
+
+            const char *line_end=token_start;
+            while(*line_end && *line_end!='\r' && *line_end!='\n')
+                ++line_end;
+
+            info.line_text.assign(line_start,static_cast<size_t>(line_end-line_start));
+            if(info.column<1)
+                info.column=1;
+
+            info.caret_line.assign(static_cast<size_t>(info.column-1),' ');
+            info.caret_line.push_back('^');
+
+            return info;
+        }
+
         void ConvertString(std::string &target,const char *source,int length)
         {
             std::string out;
@@ -55,16 +106,16 @@ namespace hgl::devil
             source_length=len;
     }
 
-    eTokenType Parse::GetToken(std::string &intro)
+    TokenType Parse::GetToken(std::string &intro)
     {
         while(true)
         {
             uint len=0;
-            eTokenType type;
+            TokenType type;
             const char *source;
 
             if(source_length<=0)
-                return ttEnd;
+                return TokenType::End;
 
             type=parse.GetToken(source_cur,source_length,&len);
 
@@ -72,22 +123,27 @@ namespace hgl::devil
             source_cur+=len;
             source_length-=len;
 
-            if(type<=ttEnd)
-                return ttEnd;
+            if(type<=TokenType::End)
+                return TokenType::End;
 
-            if(type<=ttMultilineComment)
+            if(type<=TokenType::MultilineComment)
                 continue;
 
             intro.assign(source,static_cast<size_t>(len));
+
+            last_token_start=source;
+            last_token_length=len;
+            last_token_type=type;
+
             return type;
         }
     }
 
-    eTokenType Parse::CheckToken(std::string &intro)
+    TokenType Parse::CheckToken(std::string &intro)
     {
         const char *cur=source_cur;
         uint len=source_length;
-        eTokenType type=GetToken(intro);
+        TokenType type=GetToken(intro);
 
         source_cur=cur;
         source_length=len;
@@ -95,9 +151,9 @@ namespace hgl::devil
         return type;
     }
 
-    bool Parse::GetToken(eTokenType tt,std::string &name)
+    bool Parse::GetToken(TokenType tt,std::string &name)
     {
-        eTokenType type;
+        TokenType type;
 
         while(true)
         {
@@ -106,37 +162,37 @@ namespace hgl::devil
             if(type==tt)
                 return true;
 
-            if(type<=ttEnd)
+            if(type<=TokenType::End)
                 return false;
         }
     }
 
-    bool Parse::IsTypeToken(eTokenType type) const
+    bool Parse::IsTypeToken(TokenType type) const
     {
-        return type==ttBool || type==ttString
-            || type==ttInt || type==ttUInt
-            || type==ttInt8 || type==ttUInt8
-            || type==ttInt16 || type==ttUInt16
-            || type==ttFloat;
+        return type==TokenType::Bool || type==TokenType::String
+            || type==TokenType::Int || type==TokenType::UInt
+            || type==TokenType::Int8 || type==TokenType::UInt8
+            || type==TokenType::Int16 || type==TokenType::UInt16
+            || type==TokenType::Float;
     }
 
-    int Parse::GetPrecedence(eTokenType type) const
+    int Parse::GetPrecedence(TokenType type) const
     {
         switch(type)
         {
-            case ttOr: return 1;
-            case ttAnd: return 2;
-            case ttEqual:
-            case ttNotEqual: return 3;
-            case ttLessThan:
-            case ttLessThanOrEqual:
-            case ttGreaterThan:
-            case ttGreaterThanOrEqual: return 4;
-            case ttPlus:
-            case ttMinus: return 5;
-            case ttStar:
-            case ttSlash:
-            case ttPercent: return 6;
+            case TokenType::Or: return 1;
+            case TokenType::And: return 2;
+            case TokenType::Equal:
+            case TokenType::NotEqual: return 3;
+            case TokenType::LessThan:
+            case TokenType::LessThanOrEqual:
+            case TokenType::GreaterThan:
+            case TokenType::GreaterThanOrEqual: return 4;
+            case TokenType::Plus:
+            case TokenType::Minus: return 5;
+            case TokenType::Star:
+            case TokenType::Slash:
+            case TokenType::Percent: return 6;
             default: return 0;
         }
     }
@@ -144,34 +200,34 @@ namespace hgl::devil
     std::unique_ptr<Expr> Parse::ParsePrimary()
     {
         std::string name;
-        eTokenType type=GetToken(name);
+        TokenType type=GetToken(name);
 
-        if(type==ttIdentifier)
+        if(type==TokenType::Identifier)
             return ParseCallOrIdentifier(name);
 
-        if(type==ttIntConstant)
+        if(type==TokenType::IntConstant)
             return std::make_unique<LiteralExpr>(AstValue::MakeInt(static_cast<int32_t>(std::stoi(name))));
 
-        if(type==ttFloatConstant || type==ttDoubleConstant)
+        if(type==TokenType::FloatConstant || type==TokenType::DoubleConstant)
             return std::make_unique<LiteralExpr>(AstValue::MakeFloat(static_cast<float>(std::stof(name))));
 
-        if(type==ttTrue)
+        if(type==TokenType::True)
             return std::make_unique<LiteralExpr>(AstValue::MakeBool(true));
 
-        if(type==ttFalse)
+        if(type==TokenType::False)
             return std::make_unique<LiteralExpr>(AstValue::MakeBool(false));
 
-        if(type==ttStringConstant)
+        if(type==TokenType::StringConstant)
         {
             std::string str;
             ConvertString(str,name.c_str()+1,static_cast<int>(name.size())-2);
             return std::make_unique<LiteralExpr>(AstValue::MakeString(std::move(str)));
         }
 
-        if(type==ttOpenParanthesis)
+        if(type==TokenType::OpenParanthesis)
         {
             std::unique_ptr<Expr> expr=ParseExpression();
-            GetToken(ttCloseParanthesis,name);
+            GetToken(TokenType::CloseParanthesis,name);
             return expr;
         }
 
@@ -182,9 +238,9 @@ namespace hgl::devil
     std::unique_ptr<Expr> Parse::ParseUnary()
     {
         std::string name;
-        eTokenType type=CheckToken(name);
+        TokenType type=CheckToken(name);
 
-        if(type==ttMinus || type==ttPlus || type==ttNot)
+        if(type==TokenType::Minus || type==TokenType::Plus || type==TokenType::Not)
         {
             GetToken(name);
             std::unique_ptr<Expr> right=ParseUnary();
@@ -203,7 +259,7 @@ namespace hgl::devil
         while(true)
         {
             std::string name;
-            eTokenType op=CheckToken(name);
+            TokenType op=CheckToken(name);
             const int prec=GetPrecedence(op);
 
             if(prec<min_prec || prec==0)
@@ -223,15 +279,15 @@ namespace hgl::devil
     std::unique_ptr<Expr> Parse::ParseCallOrIdentifier(const std::string &name)
     {
         std::string tmp;
-        eTokenType next=CheckToken(tmp);
+        TokenType next=CheckToken(tmp);
 
-        if(next!=ttOpenParanthesis)
+        if(next!=TokenType::OpenParanthesis)
             return std::make_unique<IdentifierExpr>(name);
 
         GetToken(tmp); // '('
         std::vector<std::unique_ptr<Expr>> args;
 
-        if(CheckToken(tmp)!=ttCloseParanthesis)
+        if(CheckToken(tmp)!=TokenType::CloseParanthesis)
         {
             while(true)
             {
@@ -240,8 +296,8 @@ namespace hgl::devil
                     return nullptr;
                 args.push_back(std::move(arg));
 
-                eTokenType sep=CheckToken(tmp);
-                if(sep==ttListSeparator)
+                TokenType sep=CheckToken(tmp);
+                if(sep==TokenType::ListSeparator)
                 {
                     GetToken(tmp);
                     continue;
@@ -250,14 +306,14 @@ namespace hgl::devil
             }
         }
 
-        GetToken(ttCloseParanthesis,tmp);
+        GetToken(TokenType::CloseParanthesis,tmp);
         return std::make_unique<CallExpr>(name,std::move(args));
     }
 
-    std::unique_ptr<Stmt> Parse::ParseVarDecl(eTokenType type)
+    std::unique_ptr<Stmt> Parse::ParseVarDecl(TokenType type)
     {
         std::string name;
-        if(GetToken(name)!=ttIdentifier)
+        if(GetToken(name)!=TokenType::Identifier)
         {
             LogError("%s","var decl missing identifier");
             return nullptr;
@@ -265,23 +321,23 @@ namespace hgl::devil
 
         std::unique_ptr<Expr> init;
         std::string tmp;
-        eTokenType next=CheckToken(tmp);
-        if(next==ttAssignment)
+        TokenType next=CheckToken(tmp);
+        if(next==TokenType::Assignment)
         {
             GetToken(tmp);
             init=ParseExpression();
         }
 
-        GetToken(ttEndStatement,tmp);
+        GetToken(TokenType::EndStatement,tmp);
         return std::make_unique<VarDeclStmt>(type,name,std::move(init));
     }
 
     std::unique_ptr<Stmt> Parse::ParseIf()
     {
         std::string tmp;
-        GetToken(ttOpenParanthesis,tmp);
+        GetToken(TokenType::OpenParanthesis,tmp);
         std::unique_ptr<Expr> cond=ParseExpression();
-        GetToken(ttCloseParanthesis,tmp);
+        GetToken(TokenType::CloseParanthesis,tmp);
 
         std::unique_ptr<Stmt> then_stmt=ParseStatement(false);
         if(!then_stmt)
@@ -298,8 +354,8 @@ namespace hgl::devil
         }
 
         std::unique_ptr<BlockStmt> else_block;
-        eTokenType next=CheckToken(tmp);
-        if(next==ttElse)
+        TokenType next=CheckToken(tmp);
+        if(next==TokenType::Else)
         {
             GetToken(tmp);
             std::unique_ptr<Stmt> else_stmt=ParseStatement(false);
@@ -319,9 +375,9 @@ namespace hgl::devil
     std::unique_ptr<Stmt> Parse::ParseWhile()
     {
         std::string tmp;
-        GetToken(ttOpenParanthesis,tmp);
+        GetToken(TokenType::OpenParanthesis,tmp);
         std::unique_ptr<Expr> cond=ParseExpression();
-        GetToken(ttCloseParanthesis,tmp);
+        GetToken(TokenType::CloseParanthesis,tmp);
 
         std::unique_ptr<Stmt> body_stmt=ParseStatement(false);
         if(!body_stmt)
@@ -343,11 +399,11 @@ namespace hgl::devil
     std::unique_ptr<Stmt> Parse::ParseFor()
     {
         std::string tmp;
-        GetToken(ttOpenParanthesis,tmp);
+        GetToken(TokenType::OpenParanthesis,tmp);
 
         std::unique_ptr<Stmt> init;
-        eTokenType next=CheckToken(tmp);
-        if(next!=ttEndStatement)
+        TokenType next=CheckToken(tmp);
+        if(next!=TokenType::EndStatement)
         {
             if(IsTypeToken(next))
             {
@@ -357,7 +413,7 @@ namespace hgl::devil
             else
             {
                 std::unique_ptr<Expr> expr=ParseExpression();
-                GetToken(ttEndStatement,tmp);
+                GetToken(TokenType::EndStatement,tmp);
                 init=std::make_unique<ExprStmt>(std::move(expr));
             }
         }
@@ -368,15 +424,15 @@ namespace hgl::devil
 
         std::unique_ptr<Expr> cond;
         next=CheckToken(tmp);
-        if(next!=ttEndStatement)
+        if(next!=TokenType::EndStatement)
             cond=ParseExpression();
-        GetToken(ttEndStatement,tmp);
+        GetToken(TokenType::EndStatement,tmp);
 
         std::unique_ptr<Expr> post;
         next=CheckToken(tmp);
-        if(next!=ttCloseParanthesis)
+        if(next!=TokenType::CloseParanthesis)
             post=ParseExpression();
-        GetToken(ttCloseParanthesis,tmp);
+        GetToken(TokenType::CloseParanthesis,tmp);
 
         std::unique_ptr<Stmt> body_stmt=ParseStatement(false);
         if(!body_stmt)
@@ -398,21 +454,21 @@ namespace hgl::devil
     std::unique_ptr<Stmt> Parse::ParseSwitch()
     {
         std::string tmp;
-        GetToken(ttOpenParanthesis,tmp);
+        GetToken(TokenType::OpenParanthesis,tmp);
         ParseExpression();
-        GetToken(ttCloseParanthesis,tmp);
-        GetToken(ttStartStatementBlock,tmp);
+        GetToken(TokenType::CloseParanthesis,tmp);
+        GetToken(TokenType::StartStatementBlock,tmp);
         int depth=1;
         while(depth>0)
         {
-            eTokenType t=GetToken(tmp);
-            if(t==ttStartStatementBlock)
+            TokenType t=GetToken(tmp);
+            if(t==TokenType::StartStatementBlock)
                 depth++;
             else
-            if(t==ttEndStatementBlock)
+            if(t==TokenType::EndStatementBlock)
                 depth--;
             else
-            if(t==ttEnd)
+            if(t==TokenType::End)
                 break;
         }
         return std::make_unique<SwitchStmt>();
@@ -422,21 +478,21 @@ namespace hgl::devil
     {
         std::string tmp;
         GetToken(tmp); // enum name
-        GetToken(ttStartStatementBlock,tmp);
+        GetToken(TokenType::StartStatementBlock,tmp);
         int depth=1;
         while(depth>0)
         {
-            eTokenType t=GetToken(tmp);
-            if(t==ttStartStatementBlock)
+            TokenType t=GetToken(tmp);
+            if(t==TokenType::StartStatementBlock)
                 depth++;
             else
-            if(t==ttEndStatementBlock)
+            if(t==TokenType::EndStatementBlock)
                 depth--;
             else
-            if(t==ttEnd)
+            if(t==TokenType::End)
                 break;
         }
-        if(CheckToken(tmp)==ttEndStatement)
+        if(CheckToken(tmp)==TokenType::EndStatement)
             GetToken(tmp);
         return std::make_unique<EnumDeclStmt>();
     }
@@ -444,60 +500,60 @@ namespace hgl::devil
     std::unique_ptr<Stmt> Parse::ParseStatement(bool top_level)
     {
         std::string name;
-        eTokenType type=CheckToken(name);
+        TokenType type=CheckToken(name);
 
-        if(type==ttStartStatementBlock)
+        if(type==TokenType::StartStatementBlock)
             return ParseBlock(top_level);
 
-        if(type==ttIf)
+        if(type==TokenType::If)
         {
             GetToken(name);
             return ParseIf();
         }
 
-        if(type==ttWhile)
+        if(type==TokenType::While)
         {
             GetToken(name);
             return ParseWhile();
         }
 
-        if(type==ttFor)
+        if(type==TokenType::For)
         {
             GetToken(name);
             return ParseFor();
         }
 
-        if(type==ttSwitch)
+        if(type==TokenType::Switch)
         {
             GetToken(name);
             return ParseSwitch();
         }
 
-        if(type==ttEnum)
+        if(type==TokenType::Enum)
         {
             GetToken(name);
             return ParseEnum();
         }
 
-        if(type==ttReturn)
+        if(type==TokenType::Return)
         {
             GetToken(name);
-            if(CheckToken(name)==ttEndStatement)
+            if(CheckToken(name)==TokenType::EndStatement)
             {
                 GetToken(name);
                 return std::make_unique<ReturnStmt>(nullptr);
             }
 
             std::unique_ptr<Expr> expr=ParseExpression();
-            GetToken(ttEndStatement,name);
+            GetToken(TokenType::EndStatement,name);
             return std::make_unique<ReturnStmt>(std::move(expr));
         }
 
-        if(type==ttGoto)
+        if(type==TokenType::Goto)
         {
             GetToken(name);
             GetToken(name);
-            GetToken(ttEndStatement,name);
+            GetToken(TokenType::EndStatement,name);
             return std::make_unique<GotoStmt>(name);
         }
 
@@ -507,13 +563,13 @@ namespace hgl::devil
             return ParseVarDecl(type);
         }
 
-        if(type==ttIdentifier)
+        if(type==TokenType::Identifier)
         {
             GetToken(name);
             std::string next;
-            eTokenType next_type=CheckToken(next);
+            TokenType next_type=CheckToken(next);
 
-            if(next_type==ttColon)
+            if(next_type==TokenType::Colon)
             {
                 GetToken(next);
                 if(!top_level)
@@ -521,46 +577,71 @@ namespace hgl::devil
                     LogError("%s","label must be at top-level");
                     return nullptr;
                 }
+                if(CheckToken(next)==TokenType::EndStatement)
+                    GetToken(next);
                 return std::make_unique<LabelStmt>(name);
             }
 
-            if(next_type==ttAssignment)
+            if(next_type==TokenType::Assignment)
             {
                 GetToken(next);
                 std::unique_ptr<Expr> expr=ParseExpression();
-                GetToken(ttEndStatement,next);
+                GetToken(TokenType::EndStatement,next);
                 return std::make_unique<AssignStmt>(name,std::move(expr));
             }
 
-            if(next_type==ttOpenParanthesis)
+            if(next_type==TokenType::OpenParanthesis)
             {
                 std::unique_ptr<Expr> expr=ParseCallOrIdentifier(name);
-                GetToken(ttEndStatement,next);
+                GetToken(TokenType::EndStatement,next);
                 return std::make_unique<ExprStmt>(std::move(expr));
             }
+
+            SourceLocationInfo loc=BuildSourceLocation(source_start,last_token_start);
+            LogError("%s",("ParseStatement unexpected identifier usage: token="
+                +std::string(asGetTokenDefinition(type))
+                +" intro='"+name+"' next="
+                +std::string(asGetTokenDefinition(next_type))
+                +" next_intro='"+next+"' top_level="+(top_level?"1":"0")
+                +" at "+std::to_string(loc.line)+":"+std::to_string(loc.column)
+                +"\n"+loc.line_text+"\n"+loc.caret_line).c_str());
         }
 
-        LogError("%s","ParseStatement failed");
+        std::string next_intro;
+        TokenType next_type=CheckToken(next_intro);
+        const size_t preview_len=source_length<80?source_length:80;
+        const std::string preview=preview_len>0?std::string(source_cur,preview_len):std::string();
+        SourceLocationInfo loc=BuildSourceLocation(source_start,last_token_start?last_token_start:source_cur);
+
+        LogError("%s",("ParseStatement failed: token="
+            +std::string(asGetTokenDefinition(type))
+            +" intro='"+name+"' next="
+            +std::string(asGetTokenDefinition(next_type))
+            +" next_intro='"+next_intro+"' top_level="+(top_level?"1":"0")
+            +" remaining="+std::to_string(source_length)
+            +" preview='"+preview+"'"
+            +" at "+std::to_string(loc.line)+":"+std::to_string(loc.column)
+            +"\n"+loc.line_text+"\n"+loc.caret_line).c_str());
         return nullptr;
     }
 
     std::unique_ptr<BlockStmt> Parse::ParseBlock(bool top_level)
     {
         std::string tmp;
-        if(CheckToken(tmp)==ttStartStatementBlock)
+        if(CheckToken(tmp)==TokenType::StartStatementBlock)
             GetToken(tmp);
 
         std::vector<std::unique_ptr<Stmt>> stmts;
 
         while(true)
         {
-            eTokenType t=CheckToken(tmp);
-            if(t==ttEndStatementBlock)
+            TokenType t=CheckToken(tmp);
+            if(t==TokenType::EndStatementBlock)
             {
                 GetToken(tmp);
                 break;
             }
-            if(t==ttEnd)
+            if(t==TokenType::End)
                 break;
 
             std::unique_ptr<Stmt> stmt=ParseStatement(top_level);
@@ -576,13 +657,13 @@ namespace hgl::devil
     {
         std::string name;
 
-        GetToken(ttOpenParanthesis,name);
-        if(CheckToken(name)!=ttCloseParanthesis)
+        GetToken(TokenType::OpenParanthesis,name);
+        if(CheckToken(name)!=TokenType::CloseParanthesis)
         {
             LogError("%s","function parameters are not supported yet");
             return false;
         }
-        GetToken(ttCloseParanthesis,name);
+        GetToken(TokenType::CloseParanthesis,name);
 
         std::unique_ptr<BlockStmt> body=ParseBlock(true);
         if(!body)
@@ -609,4 +690,6 @@ namespace hgl::devil
         return true;
     }
 }
+
+
 

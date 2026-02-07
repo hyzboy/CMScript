@@ -1,4 +1,4 @@
-#include <hgl/devil/DevilModule.h>
+﻿#include <hgl/devil/DevilModule.h>
 #include "DevilCommand.h"
 #include "DevilParse.h"
 #include "DevilFunc.h"
@@ -10,23 +10,23 @@ namespace devil
 {
     namespace
     {
-        eTokenType ToToken(detail::BindType type)
+        TokenType ToToken(detail::BindType type)
         {
             switch(type)
             {
-                case detail::BindType::Void:   return ttVoid;
-                case detail::BindType::Bool:   return ttBool;
-                case detail::BindType::Int:    return ttInt;
-                case detail::BindType::Int8:   return ttInt8;
-                case detail::BindType::Int16:  return ttInt16;
-                case detail::BindType::UInt:   return ttUInt;
-                case detail::BindType::UInt8:  return ttUInt8;
-                case detail::BindType::UInt16: return ttUInt16;
-                case detail::BindType::Float:  return ttFloat;
-                case detail::BindType::String: return ttString;
+                case detail::BindType::Void:   return TokenType::Void;
+                case detail::BindType::Bool:   return TokenType::Bool;
+                case detail::BindType::Int:    return TokenType::Int;
+                case detail::BindType::Int8:   return TokenType::Int8;
+                case detail::BindType::Int16:  return TokenType::Int16;
+                case detail::BindType::UInt:   return TokenType::UInt;
+                case detail::BindType::UInt8:  return TokenType::UInt8;
+                case detail::BindType::UInt16: return TokenType::UInt16;
+                case detail::BindType::Float:  return TokenType::Float;
+                case detail::BindType::String: return TokenType::String;
             }
 
-            return ttVoid;
+            return TokenType::Void;
         }
     }//namespace
 
@@ -39,7 +39,7 @@ namespace devil
     bool Module::MapProperty(const char *intro,void *address)
     {
         Parse parse(this,intro);
-        eTokenType type;
+        TokenType type;
         std::string name;
 
         type=parse.GetToken(name);
@@ -181,9 +181,9 @@ namespace devil
 
         while(true)
         {
-            eTokenType type=parse.GetToken(name);               //不停的通过func关键字查找函数
+            TokenType type=parse.GetToken(name);               //不停的通过func关键字查找函数
 
-            if(type==ttFunc)
+            if(type==TokenType::Func)
             {
                 parse.GetToken(name);                           //取得函数名
 
@@ -214,14 +214,14 @@ namespace devil
                 }
 
                 continue;
-            }//if type == ttFunc
+            }//if type == TokenType::Func
             else
-            if(type==ttEnum)
+            if(type==TokenType::Enum)
             {
 //                parse.ParseEnum();
-            }//if type == ttEnum
+            }//if type == TokenType::Enum
             else
-            if(type==ttConst)
+            if(type==TokenType::Const)
             {
             }
             else
@@ -314,3 +314,5 @@ namespace devil
 #endif//_DEBUG
 }//namespace devil
 }//namespace hgl
+
+

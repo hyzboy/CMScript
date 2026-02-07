@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include "as_tokendef.h"
-#include "DevilValue.h"
+#include <hgl/devil/DevilToken.h>
+#include <hgl/devil/DevilValue.h>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -12,8 +12,6 @@
 
 namespace hgl::devil
 {
-    using angle_script::eTokenType;
-
     class Module;
     class Context;
     class Func;
@@ -83,23 +81,23 @@ namespace hgl::devil
 
     class UnaryExpr final:public Expr
     {
-        eTokenType op;
+        TokenType op;
         std::unique_ptr<Expr> expr;
 
     public:
-        UnaryExpr(eTokenType o,std::unique_ptr<Expr> e)
+        UnaryExpr(TokenType o,std::unique_ptr<Expr> e)
             : op(o), expr(std::move(e)){}
         AstValue Eval(ExecContext &) const override;
     };
 
     class BinaryExpr final:public Expr
     {
-        eTokenType op;
+        TokenType op;
         std::unique_ptr<Expr> left;
         std::unique_ptr<Expr> right;
 
     public:
-        BinaryExpr(eTokenType o,std::unique_ptr<Expr> l,std::unique_ptr<Expr> r)
+        BinaryExpr(TokenType o,std::unique_ptr<Expr> l,std::unique_ptr<Expr> r)
             : op(o), left(std::move(l)), right(std::move(r)){}
         AstValue Eval(ExecContext &) const override;
     };
@@ -120,12 +118,12 @@ namespace hgl::devil
 
     class VarDeclStmt final:public Stmt
     {
-        eTokenType type;
+        TokenType type;
         std::string name;
         std::unique_ptr<Expr> init;
 
     public:
-        VarDeclStmt(eTokenType t,std::string n,std::unique_ptr<Expr> i)
+        VarDeclStmt(TokenType t,std::string n,std::unique_ptr<Expr> i)
             : type(t), name(std::move(n)), init(std::move(i)){}
         ExecResult Exec(ExecContext &) const override;
     };

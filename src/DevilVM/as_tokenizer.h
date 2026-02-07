@@ -43,13 +43,11 @@
 #include<hgl/type/DataType.h>
 #include "as_tokendef.h"
 
-using namespace hgl;
-
-namespace angle_script
+namespace hgl::devil
 {
-   const char *asGetTokenDefinition(int tokenType);
+   const char *asGetTokenDefinition(TokenType tokenType);
 
-   const char *GetTokenName(eTokenType);
+   const char *GetTokenName(TokenType);
 
     class asCTokenizer
     {
@@ -58,7 +56,7 @@ namespace angle_script
         asCTokenizer();
         ~asCTokenizer();
 
-      eTokenType GetToken(const char *source, hgl::uint sourceLength, hgl::uint *tokenLength);
+      TokenType GetToken(const char *source, hgl::uint sourceLength, hgl::uint *tokenLength);
 
     protected:
 
@@ -72,8 +70,8 @@ namespace angle_script
       const char *source;
         hgl::uint sourceLength;
 
-        eTokenType tokenType;
+        TokenType tokenType;
         hgl::uint tokenLength;
     };//class asCTokenizer
-}//namespace angle_script
+}//namespace hgl::devil
 #endif//#ifndef AS_TOKENIZER_H

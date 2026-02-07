@@ -8,8 +8,6 @@
 
 namespace hgl::devil
 {
-    using namespace angle_script;
-
     class Module;
     class Context;
     class Func;
@@ -54,9 +52,9 @@ namespace hgl::devil
 
         void *func;                     //函数地址
 
-        eTokenType result;              //返回类型
+        TokenType result;              //返回类型
 
-        std::vector<eTokenType> param;        //参数类型
+        std::vector<TokenType> param;        //参数类型
 
         FuncMap()
         {
@@ -69,7 +67,7 @@ namespace hgl::devil
 
     struct PropertyMap             //真实属性映射
     {
-        eTokenType type;                //数据类型
+        TokenType type;                //数据类型
 
         void *address;                  //属性地址
     };
@@ -106,11 +104,11 @@ namespace hgl::devil
 
     public:
 
-        eTokenType type;
+        TokenType type;
 
     public:
 
-        ValueInterface(Module *dm,eTokenType tt)
+        ValueInterface(Module *dm,TokenType tt)
         {
             module=dm;
             type=tt;
@@ -200,13 +198,13 @@ namespace hgl::devil
                                             }   \
                                         };
 
-    DEVIL_VALUE(ValueInteger,   int,    ttInt,      hgl::stoi);              //真实数值,有符号整数
-    DEVIL_VALUE(ValueUInteger,  uint,   ttUInt,     hgl::stou);              //真实数值,无符号整数
-    DEVIL_VALUE(ValueFloat,     float,  ttFloat,    hgl::stof);              //真实数值,浮点数
-    DEVIL_VALUE(ValueBool,      bool,   ttBool ,    hgl::stob);              //真实数值,布尔型
-    DEVIL_VALUE(ValueInt64,     int64,  ttInt64,    hgl::stoi);
-    DEVIL_VALUE(ValueUInt64,    uint64, ttUInt64,   hgl::stou);
-    DEVIL_VALUE(ValueDouble,    double, ttDouble,   hgl::stof);
+    DEVIL_VALUE(ValueInteger,   int,    TokenType::Int,      hgl::stoi);              //真实数值,有符号整数
+    DEVIL_VALUE(ValueUInteger,  uint,   TokenType::UInt,     hgl::stou);              //真实数值,无符号整数
+    DEVIL_VALUE(ValueFloat,     float,  TokenType::Float,    hgl::stof);              //真实数值,浮点数
+    DEVIL_VALUE(ValueBool,      bool,   TokenType::Bool,     hgl::stob);              //真实数值,布尔型
+    DEVIL_VALUE(ValueInt64,     int64,  TokenType::Int64,    hgl::stoi);
+    DEVIL_VALUE(ValueUInt64,    uint64, TokenType::UInt64,   hgl::stou);
+    DEVIL_VALUE(ValueDouble,    double, TokenType::Double,   hgl::stof);
 
     #undef DEVIL_VALUE
 
@@ -216,7 +214,7 @@ namespace hgl::devil
 
     public:
 
-        ValueProperty(Module *dm,PropertyMap *dpm,eTokenType type):Value<T>(dm,type)
+        ValueProperty(Module *dm,PropertyMap *dpm,TokenType type):Value<T>(dm,type)
         {
             address=(T *)(dpm->address);
         }
@@ -233,7 +231,7 @@ namespace hgl::devil
 
     public:
 
-        ValueFuncMap(Module *dm,Command *dfc,eTokenType type):Value<T>(dm,type)
+        ValueFuncMap(Module *dm,Command *dfc,TokenType type):Value<T>(dm,type)
         {
             cmd=dfc;
         }
@@ -266,7 +264,7 @@ namespace hgl::devil
             value_name="null";
         }
 
-        ScriptValue(Module *dm,const std::string &fn,const std::string &vn,eTokenType tt):Value<T>(dm,tt)
+        ScriptValue(Module *dm,const std::string &fn,const std::string &vn,TokenType tt):Value<T>(dm,tt)
         {
             func_name=fn;
             value_name=vn;
@@ -419,3 +417,4 @@ namespace hgl::devil
         bool Run(Context *) override;
     };
 }//namespace hgl::devil
+

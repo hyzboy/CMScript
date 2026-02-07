@@ -1,17 +1,15 @@
-#pragma once
+﻿#pragma once
 
 #include <cstdint>
 #include <string>
 #include <variant>
-#include "DevilVM/as_tokendef.h"
+#include <hgl/devil/DevilToken.h>
 
 namespace hgl::devil
 {
-    using angle_script::eTokenType;
-
     struct AstValue
     {
-        eTokenType type=angle_script::ttVoid;
+        TokenType type=TokenType::Void;
         std::variant<std::monostate,bool,int32_t,uint32_t,float,std::string> data;
 
         static AstValue MakeVoid();
@@ -29,3 +27,5 @@ namespace hgl::devil
         std::string ToString() const;
     };
 }
+
+
