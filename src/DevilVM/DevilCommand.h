@@ -75,7 +75,7 @@ namespace hgl
         DevilCommand()=default;
         virtual ~DevilCommand()=default;
 
-        virtual bool Run(){return false;}
+        virtual bool Run(DevilScriptContext *)=0;
     };
 
     template<typename T> class DevilFuncCall:public DevilCommand                                    //函数呼叫
@@ -159,7 +159,7 @@ namespace hgl
                                             delete right;   \
                                         }   \
                                         \
-                                        bool Comp() \
+                                        bool Comp() override \
                                         {   \
                                             return(left->GetValue() oper right->GetValue());    \
                                         }   \
@@ -184,7 +184,7 @@ namespace hgl
                                             \
                                         public: \
                                         \
-                                            T &GetValue(){return value;}    \
+                                            T &GetValue() override{return value;}    \
                                             \
                                         public: \
                                         \
@@ -215,7 +215,7 @@ namespace hgl
             address=(T *)(dpm->address);
         }
 
-        T &GetValue()
+        T &GetValue() override
         {
             return *address;
         }
@@ -237,9 +237,9 @@ namespace hgl
             delete cmd;
         }
 
-        T &GetValue()
+        T &GetValue() override
         {
-            cmd->Run();
+            cmd->Run(nullptr);
 
             return ((DevilFuncCall<T> *)cmd)->result;
         }
@@ -266,7 +266,7 @@ namespace hgl
             value_name=vn;
         }
 
-        T &GetValue()
+        T &GetValue() override
         {
             return value;
         }
@@ -308,7 +308,7 @@ namespace hgl
             delete[] param;
         }
 
-        bool Run(DevilScriptContext *)
+        bool Run(DevilScriptContext *) override
         {
             return func->Call(param,param_size,&(this->result));
         }
@@ -326,7 +326,7 @@ namespace hgl
         DevilSystemFuncCallDynamic(DevilFuncMap *);
         ~DevilSystemFuncCallDynamic();
 
-        bool Run(DevilScriptContext *);
+        bool Run(DevilScriptContext *) override;
     };
 
     class DevilScriptFuncCall:public DevilFuncCall<void *>                                          //脚本函数呼叫
@@ -338,7 +338,7 @@ namespace hgl
 
         DevilScriptFuncCall(DevilScriptModule *,DevilFunc *);
 
-        bool Run(DevilScriptContext *);
+        bool Run(DevilScriptContext *) override;
     };
 
     class DevilGoto:public DevilCommand                                                             //跳转
@@ -357,7 +357,7 @@ namespace hgl
 
         void UpdateGotoFlag();
 
-        bool Run(DevilScriptContext *);
+        bool Run(DevilScriptContext *) override;
     };
 
     class DevilCompGoto:public DevilCommand                                                         //比较并跳转
@@ -381,7 +381,7 @@ namespace hgl
 
         void UpdateGotoFlag();
 
-        bool Run(DevilScriptContext *);
+        bool Run(DevilScriptContext *) override;
     };
 
     class DevilReturn:public DevilCommand                                                           //函数返回
@@ -392,7 +392,7 @@ namespace hgl
 
         DevilReturn(DevilScriptModule *);
 
-        bool Run(DevilScriptContext *);
+        bool Run(DevilScriptContext *) override;
     };
 
     class DevilSystemValueEqu:public DevilCommand                                                   //真实变量赋值
@@ -401,7 +401,7 @@ namespace hgl
 
         DevilSystemValueEqu(DevilScriptModule *);
 
-        bool Run(DevilScriptContext *);
+        bool Run(DevilScriptContext *) override;
     };
 
     class DevilScriptValueEqu:public DevilCommand                                                   //脚本变量赋值
@@ -410,6 +410,6 @@ namespace hgl
 
         DevilScriptValueEqu(DevilScriptModule *);
 
-        bool Run(DevilScriptContext *);
+        bool Run(DevilScriptContext *) override;
     };
 }//namespace hgl

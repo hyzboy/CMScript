@@ -1,5 +1,13 @@
 #include<hgl/script/DevilVM.h>
 
+namespace hgl
+{
+    DevilFunc *DevilModule::GetScriptFunc(const U16String &)
+    {
+        return nullptr;
+    }
+}
+
 /*
     设计思想:
 

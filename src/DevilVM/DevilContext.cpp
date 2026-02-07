@@ -25,7 +25,7 @@ namespace hgl
                      +U16String::numberOf(sfrs->index-1)).c_str());
                 #endif//
 
-                if(cmd->Run())                  //有可能更改cur_state和index
+                if(cmd->Run(this))                  //有可能更改cur_state和index
                 {
                     if(State==dvsStop)          //退出
                         return(true);
@@ -154,6 +154,18 @@ namespace hgl
         return RunContext();
     }
 
+    bool DevilScriptContext::Start(DevilFunc *func,...)
+    {
+        if(!func)
+            return(false);
+
+        ClearStack();
+        ScriptFuncCall(func);
+        State=dvsRun;
+
+        return RunContext();
+    }
+
     bool DevilScriptContext::StartFlag(const u16char *func_name,const u16char *goto_flag)
     {
         DevilFunc *func;
@@ -166,6 +178,11 @@ namespace hgl
             return RunContext();
         else
             return(false);
+    }
+
+    bool DevilScriptContext::Start(const u16char *func_name,const u16char *goto_flag)
+    {
+        return StartFlag(func_name,goto_flag);
     }
 
     bool DevilScriptContext::Run(const u16char *func_name)

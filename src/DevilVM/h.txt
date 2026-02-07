@@ -1,9 +1,0 @@
-as_tokendef.h
-as_tokenizer.h
-DevilCommand.h
-DevilContext.h
-DevilEnum.h
-DevilFunc.h
-DevilModule.h
-DevilParse.h
-DevilVariable.h

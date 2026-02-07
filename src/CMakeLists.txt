@@ -23,6 +23,10 @@ endif()
 
 add_cm_library(CMScript "CM" ${CMSCRIPT_ROOT_INCLUDE_PATH} ${CMSCRIPT_SOURCES})
 
+if(TARGET ${DEVIL_VM_CALLX64_TARGET})
+	add_dependencies(CMScript ${DEVIL_VM_CALLX64_TARGET})
+endif()
+
 if(CMSCRIPT_ENABLE_ANGEL)
 	target_include_directories(CMScript PRIVATE ${ANGEL_SCRIPT_INCLUDE_DIRS})
 	target_compile_definitions(CMScript PRIVATE ${ANGEL_SCRIPT_DEFINITIONS})

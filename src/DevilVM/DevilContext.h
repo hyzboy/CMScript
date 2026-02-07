@@ -50,8 +50,19 @@ namespace hgl
 
         bool Start(DevilFunc *,...);
         bool Start(const u16char *);
+        bool Start(const u16char *,const u16char *);
         bool StartFlag(DevilFunc *,const u16char *);
         bool StartFlag(const u16char *,const u16char *);
+        explicit DevilScriptContext(DevilScriptModule *dm=nullptr)
+            : module(dm), cur_state(nullptr)
+        {
+        }
+
+        void SetModule(DevilScriptModule *dm)
+        {
+            module=dm;
+        }
+
         bool Run(const u16char *);
         void Pause();
         void Stop();

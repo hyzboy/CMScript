@@ -44,7 +44,7 @@ namespace hgl
 
         virtual bool        AddScript       (const u16char *,int=-1)=0;         ///<添加脚本并编译
 
-        virtual DevilFunc * GetScriptFunc   (const U16String &);              ///<取得脚本函数
+        virtual DevilFunc * GetScriptFunc   (const U16String &)=0;            ///<取得脚本函数
 
         virtual void        Clear           ()=0;                               ///<清除所有模块和映射
 

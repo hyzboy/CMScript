@@ -338,7 +338,7 @@ namespace hgl
                                     const bool call=module->OnTrueFuncCall(name.c_str());
 
                                     if(call)
-                                        cmd->Run();
+                                        cmd->Run(nullptr);      //这里是解析器，为什么要执行一下 ？？
                                 }
 
                                 #ifdef _DEBUG
@@ -419,10 +419,12 @@ namespace hgl
 
             p=param+1;
         }
-        #else
+        else
+        {
             param=new DevilSystemFuncParam[param_count];
 
             p=param;
+        }
         #endif//HGL_CPU == HGL_CPU_X86_64
 
         #ifdef _DEBUG
