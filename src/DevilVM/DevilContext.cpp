@@ -2,6 +2,8 @@
 #include"DevilModule.h"
 #include"DevilCommand.h"
 #include"DevilFunc.h"
+#include <cstdint>
+#include <cstring>
 
 namespace hgl
 {
@@ -299,37 +301,107 @@ namespace devil
         return(true);
     }
 
-    bool Context::SaveState(io::DataOutputStream *p)
+    bool Context::SaveState(std::vector<uint8_t> &out_bytes)
     {
-        if(!p->WriteInt32(static_cast<int>(run_state.size())))return(false);
+        out_bytes.clear();
 
-        for(int i=0;i<static_cast<int>(run_state.size());i++)
+        auto write_u32=[&out_bytes](uint32_t value)
         {
-            if(!p->WriteUTF16LEString(run_state[i].func->func_name))return(false);
-            if(!p->WriteInt32(run_state[i].index))return(false);
+            out_bytes.push_back(static_cast<uint8_t>(value & 0xFF));
+            out_bytes.push_back(static_cast<uint8_t>((value >> 8) & 0xFF));
+            out_bytes.push_back(static_cast<uint8_t>((value >> 16) & 0xFF));
+            out_bytes.push_back(static_cast<uint8_t>((value >> 24) & 0xFF));
+        };
+
+        auto write_i32=[&write_u32](int32_t value)
+        {
+            write_u32(static_cast<uint32_t>(value));
+        };
+
+        write_u32(static_cast<uint32_t>(run_state.size()));
+
+        for(const auto &state : run_state)
+        {
+            if(!state.func)
+                return(false);
+
+            const U16String &name=state.func->func_name;
+            const uint32_t length=static_cast<uint32_t>(name.Length());
+
+            write_u32(length);
+
+            if(length)
+            {
+                const u16char *data=name.c_str();
+                const uint8_t *bytes=reinterpret_cast<const uint8_t *>(data);
+                out_bytes.insert(out_bytes.end(), bytes, bytes + length * sizeof(u16char));
+            }
+
+            write_i32(static_cast<int32_t>(state.index));
         }
 
         return(true);
     }
 
-    bool Context::LoadState(io::DataInputStream *p)
+    bool Context::LoadState(const std::vector<uint8_t> &in_bytes)
     {
         ClearStack();
         cur_state=nullptr;
 
-        int number;
-        U16String name;
-        int index;
+        size_t offset=0;
 
-        if(!p->ReadInt32(number))return(false);
-
-        for(int i=0;i<number;i++)
+        auto read_u32=[&in_bytes,&offset](uint32_t &value)->bool
         {
-            if(!p->ReadUTF16LEString(name))return(false);
-            if(!p->ReadInt32(index))return(false);
+            if(offset + 4 > in_bytes.size())
+                return(false);
+
+            value= static_cast<uint32_t>(in_bytes[offset])
+                 | (static_cast<uint32_t>(in_bytes[offset+1]) << 8)
+                 | (static_cast<uint32_t>(in_bytes[offset+2]) << 16)
+                 | (static_cast<uint32_t>(in_bytes[offset+3]) << 24);
+            offset += 4;
+            return(true);
+        };
+
+        auto read_i32=[&read_u32](int32_t &value)->bool
+        {
+            uint32_t temp=0;
+            if(!read_u32(temp))
+                return(false);
+            value=static_cast<int32_t>(temp);
+            return(true);
+        };
+
+        uint32_t count=0;
+        if(!read_u32(count))
+            return(false);
+
+        for(uint32_t i=0;i<count;i++)
+        {
+            uint32_t length=0;
+            if(!read_u32(length))
+                return(false);
+
+            const size_t bytes_needed=static_cast<size_t>(length) * sizeof(u16char);
+            if(offset + bytes_needed > in_bytes.size())
+                return(false);
+
+            U16String name;
+            if(length)
+            {
+                const u16char *data=reinterpret_cast<const u16char *>(&in_bytes[offset]);
+                name=U16String(data, static_cast<int>(length));
+                offset += bytes_needed;
+            }
+
+            int32_t index=0;
+            if(!read_i32(index))
+                return(false);
 
             ScriptFuncRunState sfrs;
             sfrs.func=module->GetScriptFunc(name);
+            if(!sfrs.func)
+                return(false);
             sfrs.index=index;
 
             run_state.push_back(sfrs);

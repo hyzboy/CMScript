@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <stdarg.h>
+#include <cstdint>
 
 #include <hgl/devil/VM.h>
 #include <hgl/log/Log.h>
@@ -169,8 +170,8 @@ namespace devil
 
         virtual bool GetCurrentState(U16String &,int &);                     ///<取得当前状态
 
-        virtual bool SaveState(io::DataOutputStream *);                      ///<保存状态
-        virtual bool LoadState(io::DataInputStream *);                       ///<加载状态
+        virtual bool SaveState(std::vector<uint8_t> &);                      ///<保存状态(字节)
+        virtual bool LoadState(const std::vector<uint8_t> &);                ///<加载状态(字节)
     };//class Context
 
     const int ScriptMinLength=sizeof(u"func main(){}");                ///<《魔鬼》最小脚本长度
