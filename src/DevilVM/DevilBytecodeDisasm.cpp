@@ -18,6 +18,7 @@ namespace hgl::devil
                 case TokenType::UInt8:
                 case TokenType::UInt16: return std::to_string(value.ToUInt());
                 case TokenType::Float: return std::to_string(value.ToFloat());
+                case TokenType::Double: return std::to_string(value.ToDouble());
                 case TokenType::String: return "\""+value.ToString()+"\"";
                 case TokenType::Void: return "void";
                 default: return "?";
@@ -36,7 +37,36 @@ namespace hgl::devil
             case OpCode::StoreLocal: return "StoreLocal";
             case OpCode::AddLocalConst: return "AddLocalConst";
             case OpCode::SubLocalConst: return "SubLocalConst";
+            case OpCode::MulLocalConst: return "MulLocalConst";
+            case OpCode::DivLocalConst: return "DivLocalConst";
+            case OpCode::ModLocalConst: return "ModLocalConst";
+            case OpCode::BitAndLocalConst: return "BitAndLocalConst";
+            case OpCode::BitOrLocalConst: return "BitOrLocalConst";
+            case OpCode::BitXorLocalConst: return "BitXorLocalConst";
+            case OpCode::ShlLocalConst: return "ShlLocalConst";
+            case OpCode::ShrLocalConst: return "ShrLocalConst";
+            case OpCode::AddLocalLocal: return "AddLocalLocal";
+            case OpCode::SubLocalLocal: return "SubLocalLocal";
+            case OpCode::MulLocalLocal: return "MulLocalLocal";
+            case OpCode::DivLocalLocal: return "DivLocalLocal";
+            case OpCode::ModLocalLocal: return "ModLocalLocal";
+            case OpCode::BitAndLocalLocal: return "BitAndLocalLocal";
+            case OpCode::BitOrLocalLocal: return "BitOrLocalLocal";
+            case OpCode::BitXorLocalLocal: return "BitXorLocalLocal";
+            case OpCode::ShlLocalLocal: return "ShlLocalLocal";
+            case OpCode::ShrLocalLocal: return "ShrLocalLocal";
             case OpCode::JumpIfLocalGeConst: return "JumpIfLocalGeConst";
+            case OpCode::JumpIfLocalGtConst: return "JumpIfLocalGtConst";
+            case OpCode::JumpIfLocalLeConst: return "JumpIfLocalLeConst";
+            case OpCode::JumpIfLocalLtConst: return "JumpIfLocalLtConst";
+            case OpCode::JumpIfLocalEqConst: return "JumpIfLocalEqConst";
+            case OpCode::JumpIfLocalNeConst: return "JumpIfLocalNeConst";
+            case OpCode::JumpIfLocalGeLocal: return "JumpIfLocalGeLocal";
+            case OpCode::JumpIfLocalGtLocal: return "JumpIfLocalGtLocal";
+            case OpCode::JumpIfLocalLeLocal: return "JumpIfLocalLeLocal";
+            case OpCode::JumpIfLocalLtLocal: return "JumpIfLocalLtLocal";
+            case OpCode::JumpIfLocalEqLocal: return "JumpIfLocalEqLocal";
+            case OpCode::JumpIfLocalNeLocal: return "JumpIfLocalNeLocal";
             case OpCode::Cast: return "Cast";
             case OpCode::Add: return "Add";
             case OpCode::Sub: return "Sub";
@@ -94,10 +124,43 @@ namespace hgl::devil
                 break;
             case OpCode::AddLocalConst:
             case OpCode::SubLocalConst:
+            case OpCode::MulLocalConst:
+            case OpCode::DivLocalConst:
+            case OpCode::ModLocalConst:
+            case OpCode::BitAndLocalConst:
+            case OpCode::BitOrLocalConst:
+            case OpCode::BitXorLocalConst:
+            case OpCode::ShlLocalConst:
+            case OpCode::ShrLocalConst:
                 out<<" local="<<ins.a<<" const="<<ins.b;
                 break;
+            case OpCode::AddLocalLocal:
+            case OpCode::SubLocalLocal:
+            case OpCode::MulLocalLocal:
+            case OpCode::DivLocalLocal:
+            case OpCode::ModLocalLocal:
+            case OpCode::BitAndLocalLocal:
+            case OpCode::BitOrLocalLocal:
+            case OpCode::BitXorLocalLocal:
+            case OpCode::ShlLocalLocal:
+            case OpCode::ShrLocalLocal:
+                out<<" local="<<ins.a<<" other="<<ins.b;
+                break;
             case OpCode::JumpIfLocalGeConst:
+            case OpCode::JumpIfLocalGtConst:
+            case OpCode::JumpIfLocalLeConst:
+            case OpCode::JumpIfLocalLtConst:
+            case OpCode::JumpIfLocalEqConst:
+            case OpCode::JumpIfLocalNeConst:
                 out<<" local="<<ins.a<<" const="<<ins.b<<" -> "<<ins.c;
+                break;
+            case OpCode::JumpIfLocalGeLocal:
+            case OpCode::JumpIfLocalGtLocal:
+            case OpCode::JumpIfLocalLeLocal:
+            case OpCode::JumpIfLocalLtLocal:
+            case OpCode::JumpIfLocalEqLocal:
+            case OpCode::JumpIfLocalNeLocal:
+                out<<" local="<<ins.a<<" other="<<ins.b<<" -> "<<ins.c;
                 break;
             case OpCode::Cast:
             {

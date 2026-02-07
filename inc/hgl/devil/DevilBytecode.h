@@ -19,7 +19,36 @@ namespace hgl::devil
         StoreLocal,
         AddLocalConst,
         SubLocalConst,
+        MulLocalConst,
+        DivLocalConst,
+        ModLocalConst,
+        BitAndLocalConst,
+        BitOrLocalConst,
+        BitXorLocalConst,
+        ShlLocalConst,
+        ShrLocalConst,
+        AddLocalLocal,
+        SubLocalLocal,
+        MulLocalLocal,
+        DivLocalLocal,
+        ModLocalLocal,
+        BitAndLocalLocal,
+        BitOrLocalLocal,
+        BitXorLocalLocal,
+        ShlLocalLocal,
+        ShrLocalLocal,
         JumpIfLocalGeConst,
+        JumpIfLocalGtConst,
+        JumpIfLocalLeConst,
+        JumpIfLocalLtConst,
+        JumpIfLocalEqConst,
+        JumpIfLocalNeConst,
+        JumpIfLocalGeLocal,
+        JumpIfLocalGtLocal,
+        JumpIfLocalLeLocal,
+        JumpIfLocalLtLocal,
+        JumpIfLocalEqLocal,
+        JumpIfLocalNeLocal,
         Cast,
         Add,
         Sub,
@@ -63,9 +92,12 @@ namespace hgl::devil
         std::vector<Instruction> code;
         std::vector<AstValue> constants;
         std::vector<int32_t> const_ints;
+        std::vector<double> const_floats;
         int32_t local_count=0;
         int32_t param_count=0;
         bool fast_int=false;
+        bool fast_float=false;
+        bool fast_double=false;
     };
 
     class BytecodeModule

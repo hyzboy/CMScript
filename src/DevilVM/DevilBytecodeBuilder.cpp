@@ -30,7 +30,36 @@ namespace hgl::devil
                     case OpCode::StoreLocal:
                     case OpCode::AddLocalConst:
                     case OpCode::SubLocalConst:
+                    case OpCode::MulLocalConst:
+                    case OpCode::DivLocalConst:
+                    case OpCode::ModLocalConst:
+                    case OpCode::BitAndLocalConst:
+                    case OpCode::BitOrLocalConst:
+                    case OpCode::BitXorLocalConst:
+                    case OpCode::ShlLocalConst:
+                    case OpCode::ShrLocalConst:
+                    case OpCode::AddLocalLocal:
+                    case OpCode::SubLocalLocal:
+                    case OpCode::MulLocalLocal:
+                    case OpCode::DivLocalLocal:
+                    case OpCode::ModLocalLocal:
+                    case OpCode::BitAndLocalLocal:
+                    case OpCode::BitOrLocalLocal:
+                    case OpCode::BitXorLocalLocal:
+                    case OpCode::ShlLocalLocal:
+                    case OpCode::ShrLocalLocal:
                     case OpCode::JumpIfLocalGeConst:
+                    case OpCode::JumpIfLocalGtConst:
+                    case OpCode::JumpIfLocalLeConst:
+                    case OpCode::JumpIfLocalLtConst:
+                    case OpCode::JumpIfLocalEqConst:
+                    case OpCode::JumpIfLocalNeConst:
+                    case OpCode::JumpIfLocalGeLocal:
+                    case OpCode::JumpIfLocalGtLocal:
+                    case OpCode::JumpIfLocalLeLocal:
+                    case OpCode::JumpIfLocalLtLocal:
+                    case OpCode::JumpIfLocalEqLocal:
+                    case OpCode::JumpIfLocalNeLocal:
                     case OpCode::Add:
                     case OpCode::Sub:
                     case OpCode::Mul:
@@ -72,11 +101,177 @@ namespace hgl::devil
             return true;
         }
 
+        bool ComputeFastFloat(BytecodeFunction &func)
+        {
+            func.const_floats.clear();
+            bool has_double=false;
+
+            for(const AstValue &value:func.constants)
+            {
+                switch(value.type)
+                {
+                    case TokenType::Bool:
+                    case TokenType::Int:
+                    case TokenType::Int8:
+                    case TokenType::Int16:
+                    case TokenType::UInt:
+                    case TokenType::UInt8:
+                    case TokenType::UInt16:
+                    case TokenType::Float:
+                    case TokenType::Double:
+                        func.const_floats.push_back(value.ToDouble());
+                        if(value.type==TokenType::Double)
+                            has_double=true;
+                        break;
+                    default:
+                        return false;
+                }
+            }
+
+            for(const Instruction &ins:func.code)
+            {
+                switch(ins.op)
+                {
+                    case OpCode::Nop:
+                    case OpCode::PushConst:
+                    case OpCode::Pop:
+                    case OpCode::LoadLocal:
+                    case OpCode::StoreLocal:
+                    case OpCode::AddLocalConst:
+                    case OpCode::SubLocalConst:
+                    case OpCode::MulLocalConst:
+                    case OpCode::DivLocalConst:
+                    case OpCode::ModLocalConst:
+                    case OpCode::AddLocalLocal:
+                    case OpCode::SubLocalLocal:
+                    case OpCode::MulLocalLocal:
+                    case OpCode::DivLocalLocal:
+                    case OpCode::ModLocalLocal:
+                    case OpCode::JumpIfLocalGeConst:
+                    case OpCode::JumpIfLocalGtConst:
+                    case OpCode::JumpIfLocalLeConst:
+                    case OpCode::JumpIfLocalLtConst:
+                    case OpCode::JumpIfLocalEqConst:
+                    case OpCode::JumpIfLocalNeConst:
+                    case OpCode::JumpIfLocalGeLocal:
+                    case OpCode::JumpIfLocalGtLocal:
+                    case OpCode::JumpIfLocalLeLocal:
+                    case OpCode::JumpIfLocalLtLocal:
+                    case OpCode::JumpIfLocalEqLocal:
+                    case OpCode::JumpIfLocalNeLocal:
+                    case OpCode::Add:
+                    case OpCode::Sub:
+                    case OpCode::Mul:
+                    case OpCode::Div:
+                    case OpCode::Mod:
+                    case OpCode::Neg:
+                    case OpCode::Not:
+                    case OpCode::Eq:
+                    case OpCode::Ne:
+                    case OpCode::Lt:
+                    case OpCode::Le:
+                    case OpCode::Gt:
+                    case OpCode::Ge:
+                    case OpCode::And:
+                    case OpCode::Or:
+                    case OpCode::Jump:
+                    case OpCode::JumpIfFalse:
+                    case OpCode::Ret:
+                        break;
+                    case OpCode::Cast:
+                    {
+                        const TokenType target=static_cast<TokenType>(ins.a);
+                        if(target==TokenType::Double)
+                        {
+                            has_double=true;
+                            break;
+                        }
+                        if(target!=TokenType::Bool && target!=TokenType::Float)
+                            return false;
+                        break;
+                    }
+                    default:
+                        return false;
+                }
+            }
+
+            func.fast_double=has_double;
+            return true;
+        }
+
         void PeepholeFused(BytecodeFunction &func)
         {
             auto &code=func.code;
             if(code.size()<4)
                 return;
+
+            auto fuse_local_const=[&](size_t i,OpCode fused)
+            {
+                const Instruction &a=code[i];
+                const Instruction &b=code[i+1];
+                const Instruction &d=code[i+3];
+                if(a.op==OpCode::LoadLocal && b.op==OpCode::PushConst
+                    && d.op==OpCode::StoreLocal && a.a==d.a)
+                {
+                    code[i]=Instruction{fused,a.a,b.a,0};
+                    code[i+1].op=OpCode::Nop;
+                    code[i+2].op=OpCode::Nop;
+                    code[i+3].op=OpCode::Nop;
+                    return true;
+                }
+                return false;
+            };
+
+            auto fuse_local_cmp=[&](size_t i,OpCode fused)
+            {
+                const Instruction &a=code[i];
+                const Instruction &b=code[i+1];
+                const Instruction &d=code[i+3];
+                if(a.op==OpCode::LoadLocal && b.op==OpCode::PushConst
+                    && d.op==OpCode::JumpIfFalse)
+                {
+                    code[i]=Instruction{fused,a.a,b.a,d.a};
+                    code[i+1].op=OpCode::Nop;
+                    code[i+2].op=OpCode::Nop;
+                    code[i+3].op=OpCode::Nop;
+                    return true;
+                }
+                return false;
+            };
+
+            auto fuse_local_local=[&](size_t i,OpCode fused)
+            {
+                const Instruction &a=code[i];
+                const Instruction &b=code[i+1];
+                const Instruction &d=code[i+3];
+                if(a.op==OpCode::LoadLocal && b.op==OpCode::LoadLocal
+                    && d.op==OpCode::StoreLocal && a.a==d.a)
+                {
+                    code[i]=Instruction{fused,a.a,b.a,0};
+                    code[i+1].op=OpCode::Nop;
+                    code[i+2].op=OpCode::Nop;
+                    code[i+3].op=OpCode::Nop;
+                    return true;
+                }
+                return false;
+            };
+
+            auto fuse_local_cmp_local=[&](size_t i,OpCode fused)
+            {
+                const Instruction &a=code[i];
+                const Instruction &b=code[i+1];
+                const Instruction &d=code[i+3];
+                if(a.op==OpCode::LoadLocal && b.op==OpCode::LoadLocal
+                    && d.op==OpCode::JumpIfFalse)
+                {
+                    code[i]=Instruction{fused,a.a,b.a,d.a};
+                    code[i+1].op=OpCode::Nop;
+                    code[i+2].op=OpCode::Nop;
+                    code[i+3].op=OpCode::Nop;
+                    return true;
+                }
+                return false;
+            };
 
             for(size_t i=0;i+3<code.size();++i)
             {
@@ -85,37 +280,41 @@ namespace hgl::devil
                 const Instruction &c=code[i+2];
                 const Instruction &d=code[i+3];
 
-                if(a.op==OpCode::LoadLocal && b.op==OpCode::PushConst
-                    && c.op==OpCode::Add && d.op==OpCode::StoreLocal
-                    && a.a==d.a)
-                {
-                    code[i]=Instruction{OpCode::AddLocalConst,a.a,b.a,0};
-                    code[i+1].op=OpCode::Nop;
-                    code[i+2].op=OpCode::Nop;
-                    code[i+3].op=OpCode::Nop;
-                    continue;
-                }
+                if(c.op==OpCode::Add && fuse_local_const(i,OpCode::AddLocalConst)) continue;
+                if(c.op==OpCode::Sub && fuse_local_const(i,OpCode::SubLocalConst)) continue;
+                if(c.op==OpCode::Mul && fuse_local_const(i,OpCode::MulLocalConst)) continue;
+                if(c.op==OpCode::Div && fuse_local_const(i,OpCode::DivLocalConst)) continue;
+                if(c.op==OpCode::Mod && fuse_local_const(i,OpCode::ModLocalConst)) continue;
+                if(c.op==OpCode::BitAnd && fuse_local_const(i,OpCode::BitAndLocalConst)) continue;
+                if(c.op==OpCode::BitOr && fuse_local_const(i,OpCode::BitOrLocalConst)) continue;
+                if(c.op==OpCode::BitXor && fuse_local_const(i,OpCode::BitXorLocalConst)) continue;
+                if(c.op==OpCode::Shl && fuse_local_const(i,OpCode::ShlLocalConst)) continue;
+                if(c.op==OpCode::Shr && fuse_local_const(i,OpCode::ShrLocalConst)) continue;
 
-                if(a.op==OpCode::LoadLocal && b.op==OpCode::PushConst
-                    && c.op==OpCode::Sub && d.op==OpCode::StoreLocal
-                    && a.a==d.a)
-                {
-                    code[i]=Instruction{OpCode::SubLocalConst,a.a,b.a,0};
-                    code[i+1].op=OpCode::Nop;
-                    code[i+2].op=OpCode::Nop;
-                    code[i+3].op=OpCode::Nop;
-                    continue;
-                }
+                if(c.op==OpCode::Add && fuse_local_local(i,OpCode::AddLocalLocal)) continue;
+                if(c.op==OpCode::Sub && fuse_local_local(i,OpCode::SubLocalLocal)) continue;
+                if(c.op==OpCode::Mul && fuse_local_local(i,OpCode::MulLocalLocal)) continue;
+                if(c.op==OpCode::Div && fuse_local_local(i,OpCode::DivLocalLocal)) continue;
+                if(c.op==OpCode::Mod && fuse_local_local(i,OpCode::ModLocalLocal)) continue;
+                if(c.op==OpCode::BitAnd && fuse_local_local(i,OpCode::BitAndLocalLocal)) continue;
+                if(c.op==OpCode::BitOr && fuse_local_local(i,OpCode::BitOrLocalLocal)) continue;
+                if(c.op==OpCode::BitXor && fuse_local_local(i,OpCode::BitXorLocalLocal)) continue;
+                if(c.op==OpCode::Shl && fuse_local_local(i,OpCode::ShlLocalLocal)) continue;
+                if(c.op==OpCode::Shr && fuse_local_local(i,OpCode::ShrLocalLocal)) continue;
 
-                if(a.op==OpCode::LoadLocal && b.op==OpCode::PushConst
-                    && c.op==OpCode::Lt && d.op==OpCode::JumpIfFalse)
-                {
-                    code[i]=Instruction{OpCode::JumpIfLocalGeConst,a.a,b.a,d.a};
-                    code[i+1].op=OpCode::Nop;
-                    code[i+2].op=OpCode::Nop;
-                    code[i+3].op=OpCode::Nop;
-                    continue;
-                }
+                if(c.op==OpCode::Lt && fuse_local_cmp(i,OpCode::JumpIfLocalGeConst)) continue;
+                if(c.op==OpCode::Le && fuse_local_cmp(i,OpCode::JumpIfLocalGtConst)) continue;
+                if(c.op==OpCode::Gt && fuse_local_cmp(i,OpCode::JumpIfLocalLeConst)) continue;
+                if(c.op==OpCode::Ge && fuse_local_cmp(i,OpCode::JumpIfLocalLtConst)) continue;
+                if(c.op==OpCode::Eq && fuse_local_cmp(i,OpCode::JumpIfLocalNeConst)) continue;
+                if(c.op==OpCode::Ne && fuse_local_cmp(i,OpCode::JumpIfLocalEqConst)) continue;
+
+                if(c.op==OpCode::Lt && fuse_local_cmp_local(i,OpCode::JumpIfLocalGeLocal)) continue;
+                if(c.op==OpCode::Le && fuse_local_cmp_local(i,OpCode::JumpIfLocalGtLocal)) continue;
+                if(c.op==OpCode::Gt && fuse_local_cmp_local(i,OpCode::JumpIfLocalLeLocal)) continue;
+                if(c.op==OpCode::Ge && fuse_local_cmp_local(i,OpCode::JumpIfLocalLtLocal)) continue;
+                if(c.op==OpCode::Eq && fuse_local_cmp_local(i,OpCode::JumpIfLocalNeLocal)) continue;
+                if(c.op==OpCode::Ne && fuse_local_cmp_local(i,OpCode::JumpIfLocalEqLocal)) continue;
             }
         }
     }
@@ -733,6 +932,7 @@ namespace hgl::devil
         out_func.local_count=static_cast<int32_t>(locals.size());
         out_func.param_count=static_cast<int32_t>(params.size());
         out_func.fast_int=ComputeFastInt(out_func);
+        out_func.fast_float=ComputeFastFloat(out_func);
         return true;
     }
 

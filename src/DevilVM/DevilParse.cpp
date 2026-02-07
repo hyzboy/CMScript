@@ -238,8 +238,11 @@ namespace hgl::devil
         if(type==TokenType::IntConstant)
             return std::make_unique<LiteralExpr>(AstValue::MakeInt(static_cast<int32_t>(std::stoi(name))));
 
-        if(type==TokenType::FloatConstant || type==TokenType::DoubleConstant)
+        if(type==TokenType::FloatConstant)
             return std::make_unique<LiteralExpr>(AstValue::MakeFloat(static_cast<float>(std::stof(name))));
+
+        if(type==TokenType::DoubleConstant)
+            return std::make_unique<LiteralExpr>(AstValue::MakeDouble(static_cast<double>(std::stod(name))));
 
         if(type==TokenType::True)
             return std::make_unique<LiteralExpr>(AstValue::MakeBool(true));

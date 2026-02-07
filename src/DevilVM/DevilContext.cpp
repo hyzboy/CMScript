@@ -18,6 +18,7 @@ namespace hgl::devil
                 case TokenType::UInt8:
                 case TokenType::UInt16: return AstValue::MakeUInt(value.ToUInt());
                 case TokenType::Float:  return AstValue::MakeFloat(value.ToFloat());
+                case TokenType::Double: return AstValue::MakeDouble(value.ToDouble());
                 case TokenType::String: return AstValue::MakeString(value.ToString());
                 default:                return AstValue::MakeVoid();
             }

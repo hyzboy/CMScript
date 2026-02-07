@@ -3,6 +3,18 @@
 #include "DevilCommand.h"
 #include <cmath>
 
+#if defined(NDEBUG)
+    #define HGL_BYTECODE_BOUNDS_CHECK 0
+#else
+    #define HGL_BYTECODE_BOUNDS_CHECK 1
+#endif
+
+#if defined(__GNUC__) || defined(__clang__)
+    #define HGL_BYTECODE_COMPUTED_GOTO 1
+#else
+    #define HGL_BYTECODE_COMPUTED_GOTO 0
+#endif
+
 namespace hgl::devil
 {
     bool CallNativeFunc(FuncMap *map,const std::vector<AstValue> &args,Module &module,AstValue &out_value);
@@ -25,7 +37,22 @@ namespace hgl::devil
 
         AstValue BinaryNumeric(const AstValue &lhs,const AstValue &rhs,OpCode op)
         {
+            const bool use_double=(lhs.type==TokenType::Double || rhs.type==TokenType::Double);
             const bool use_float=(lhs.type==TokenType::Float || rhs.type==TokenType::Float);
+            if(use_double)
+            {
+                const double a=lhs.ToDouble();
+                const double b=rhs.ToDouble();
+                switch(op)
+                {
+                    case OpCode::Add: return AstValue::MakeDouble(a+b);
+                    case OpCode::Sub: return AstValue::MakeDouble(a-b);
+                    case OpCode::Mul: return AstValue::MakeDouble(a*b);
+                    case OpCode::Div: return AstValue::MakeDouble(b!=0.0?a/b:0.0);
+                    case OpCode::Mod: return AstValue::MakeDouble(std::fmod(a,b));
+                    default: return AstValue::MakeDouble(0.0);
+                }
+            }
             if(use_float)
             {
                 const float a=lhs.ToFloat();
@@ -72,7 +99,23 @@ namespace hgl::devil
                 }
             }
 
+            const bool use_double=(lhs.type==TokenType::Double || rhs.type==TokenType::Double);
             const bool use_float=(lhs.type==TokenType::Float || rhs.type==TokenType::Float);
+            if(use_double)
+            {
+                const double a=lhs.ToDouble();
+                const double b=rhs.ToDouble();
+                switch(op)
+                {
+                    case OpCode::Eq: return AstValue::MakeBool(a==b);
+                    case OpCode::Ne: return AstValue::MakeBool(a!=b);
+                    case OpCode::Lt: return AstValue::MakeBool(a<b);
+                    case OpCode::Le: return AstValue::MakeBool(a<=b);
+                    case OpCode::Gt: return AstValue::MakeBool(a>b);
+                    case OpCode::Ge: return AstValue::MakeBool(a>=b);
+                    default: return AstValue::MakeBool(false);
+                }
+            }
             if(use_float)
             {
                 const float a=lhs.ToFloat();
@@ -115,6 +158,7 @@ namespace hgl::devil
                 case TokenType::UInt8:
                 case TokenType::UInt16: return AstValue::MakeUInt(value.ToUInt());
                 case TokenType::Float:  return AstValue::MakeFloat(value.ToFloat());
+                case TokenType::Double: return AstValue::MakeDouble(value.ToDouble());
                 case TokenType::String: return AstValue::MakeString(value.ToString());
                 case TokenType::Void:   return AstValue::MakeVoid();
                 default:                return AstValue::MakeVoid();
@@ -217,6 +261,870 @@ namespace hgl::devil
 
                 while(!callstack.empty())
                 {
+                    Frame *frame=&callstack.back();
+                    if(!frame->func)
+                    {
+                        error="bytecode missing frame function";
+                        return false;
+                    }
+
+        #if HGL_BYTECODE_COMPUTED_GOTO
+                            Instruction ins;
+
+                            auto dispatch=[&](OpCode op)->void*
+                            {
+                                switch(op)
+                                {
+                                    case OpCode::Nop: return &&op_nop;
+                                    case OpCode::PushConst: return &&op_push_const;
+                                    case OpCode::Pop: return &&op_pop;
+                                    case OpCode::LoadLocal: return &&op_load_local;
+                                    case OpCode::StoreLocal: return &&op_store_local;
+                                    case OpCode::AddLocalConst: return &&op_add_local_const;
+                                    case OpCode::SubLocalConst: return &&op_sub_local_const;
+                                    case OpCode::MulLocalConst: return &&op_mul_local_const;
+                                    case OpCode::DivLocalConst: return &&op_div_local_const;
+                                    case OpCode::ModLocalConst: return &&op_mod_local_const;
+                                    case OpCode::BitAndLocalConst: return &&op_bitand_local_const;
+                                    case OpCode::BitOrLocalConst: return &&op_bitor_local_const;
+                                    case OpCode::BitXorLocalConst: return &&op_bitxor_local_const;
+                                    case OpCode::ShlLocalConst: return &&op_shl_local_const;
+                                    case OpCode::ShrLocalConst: return &&op_shr_local_const;
+                                    case OpCode::Add: return &&op_add;
+                                    case OpCode::Sub: return &&op_sub;
+                                    case OpCode::Mul: return &&op_mul;
+                                    case OpCode::Div: return &&op_div;
+                                    case OpCode::Mod: return &&op_mod;
+                                    case OpCode::Neg: return &&op_neg;
+                                    case OpCode::Not: return &&op_not;
+                                    case OpCode::BitNot: return &&op_bitnot;
+                                    case OpCode::BitAnd: return &&op_bitand;
+                                    case OpCode::BitOr: return &&op_bitor;
+                                    case OpCode::BitXor: return &&op_bitxor;
+                                    case OpCode::Shl: return &&op_shl;
+                                    case OpCode::Shr: return &&op_shr;
+                                    case OpCode::Eq: return &&op_eq;
+                                    case OpCode::Ne: return &&op_ne;
+                                    case OpCode::Lt: return &&op_lt;
+                                    case OpCode::Le: return &&op_le;
+                                    case OpCode::Gt: return &&op_gt;
+                                    case OpCode::Ge: return &&op_ge;
+                                    case OpCode::And: return &&op_and;
+                                    case OpCode::Or: return &&op_or;
+                                    case OpCode::Jump: return &&op_jump;
+                                    case OpCode::JumpIfFalse: return &&op_jump_if_false;
+                                    case OpCode::JumpIfLocalGeConst: return &&op_jump_if_local_ge;
+                                    case OpCode::JumpIfLocalGtConst: return &&op_jump_if_local_gt;
+                                    case OpCode::JumpIfLocalLeConst: return &&op_jump_if_local_le;
+                                    case OpCode::JumpIfLocalLtConst: return &&op_jump_if_local_lt;
+                                    case OpCode::JumpIfLocalEqConst: return &&op_jump_if_local_eq;
+                                    case OpCode::JumpIfLocalNeConst: return &&op_jump_if_local_ne;
+                                    case OpCode::Cast: return &&op_cast;
+                                    case OpCode::Ret: return &&op_ret;
+                                    default: return &&op_default;
+                                }
+                            };
+
+                            auto fetch=[&]() -> bool
+                            {
+                                if(frame->pc>=frame->func->code.size())
+                                {
+                                    error="bytecode pc out of range";
+                                    return false;
+                                }
+                                ins=frame->func->code[frame->pc++];
+                                return true;
+                            };
+
+                            #define NEXT() do { if(!fetch()) return false; goto *dispatch(ins.op); } while(0)
+
+                            NEXT();
+
+                            op_nop:
+                                NEXT();
+                            op_push_const:
+                                if(ins.a<0 || static_cast<size_t>(ins.a)>=frame->func->const_ints.size())
+                                {
+                                    error="bytecode fastint const out of range";
+                                    return false;
+                                }
+                                istack.push_back(frame->func->const_ints[static_cast<size_t>(ins.a)]);
+                                NEXT();
+                            op_pop:
+                                if(istack.empty())
+                                {
+                                    error="bytecode fastint pop underflow";
+                                    return false;
+                                }
+                                istack.pop_back();
+                                NEXT();
+                            op_load_local:
+                            {
+                                const size_t index=frame->base+static_cast<size_t>(ins.a);
+                                if(index>=istack.size())
+                                {
+                                    error="bytecode fastint load local out of range";
+                                    return false;
+                                }
+                                istack.push_back(istack[index]);
+                                NEXT();
+                            }
+                            op_store_local:
+                            {
+                                const size_t index=frame->base+static_cast<size_t>(ins.a);
+                                if(index>=istack.size())
+                                {
+                                    error="bytecode fastint store local out of range";
+                                    return false;
+                                }
+                                if(istack.empty())
+                                {
+                                    error="bytecode fastint store local underflow";
+                                    return false;
+                                }
+                                const int32_t v=istack.back();
+                                istack.pop_back();
+                                istack[index]=v;
+                                NEXT();
+                            }
+                            op_add_local_const:
+                            op_sub_local_const:
+                            op_mul_local_const:
+                            op_div_local_const:
+                            op_mod_local_const:
+                            op_bitand_local_const:
+                            op_bitor_local_const:
+                            op_bitxor_local_const:
+                            op_shl_local_const:
+                            op_shr_local_const:
+                            {
+                                const size_t index=frame->base+static_cast<size_t>(ins.a);
+                                if(index>=istack.size())
+                                {
+                                    error="bytecode fastint add/sub local out of range";
+                                    return false;
+                                }
+                                if(ins.b<0 || static_cast<size_t>(ins.b)>=frame->func->const_ints.size())
+                                {
+                                    error="bytecode fastint const out of range";
+                                    return false;
+                                }
+                                const int32_t rhs=frame->func->const_ints[static_cast<size_t>(ins.b)];
+                                switch(ins.op)
+                                {
+                                    case OpCode::AddLocalConst: istack[index]+=rhs; break;
+                                    case OpCode::SubLocalConst: istack[index]-=rhs; break;
+                                    case OpCode::MulLocalConst: istack[index]*=rhs; break;
+                                    case OpCode::DivLocalConst: istack[index]=(rhs?istack[index]/rhs:0); break;
+                                    case OpCode::ModLocalConst: istack[index]=(rhs?istack[index]%rhs:0); break;
+                                    case OpCode::BitAndLocalConst: istack[index]&=rhs; break;
+                                    case OpCode::BitOrLocalConst: istack[index]|=rhs; break;
+                                    case OpCode::BitXorLocalConst: istack[index]^=rhs; break;
+                                    case OpCode::ShlLocalConst: istack[index]=istack[index]<<rhs; break;
+                                    case OpCode::ShrLocalConst: istack[index]=istack[index]>>rhs; break;
+                                    default: break;
+                                }
+                                NEXT();
+                            }
+                            op_add:
+                            op_sub:
+                            op_mul:
+                            op_div:
+                            op_mod:
+                            {
+                                if(istack.size()<2)
+                                {
+                                    error="bytecode fastint binary underflow";
+                                    return false;
+                                }
+                                const int32_t rhs=istack.back();
+                                istack.pop_back();
+                                const int32_t lhs=istack.back();
+                                istack.pop_back();
+                                int32_t out=0;
+                                switch(ins.op)
+                                {
+                                    case OpCode::Add: out=lhs+rhs; break;
+                                    case OpCode::Sub: out=lhs-rhs; break;
+                                    case OpCode::Mul: out=lhs*rhs; break;
+                                    case OpCode::Div: out=rhs?lhs/rhs:0; break;
+                                    case OpCode::Mod: out=rhs?lhs%rhs:0; break;
+                                    default: break;
+                                }
+                                istack.push_back(out);
+                                NEXT();
+                            }
+                            op_neg:
+                                if(istack.empty())
+                                {
+                                    error="bytecode fastint neg underflow";
+                                    return false;
+                                }
+                                istack.back()=-istack.back();
+                                NEXT();
+                            op_not:
+                                if(istack.empty())
+                                {
+                                    error="bytecode fastint not underflow";
+                                    return false;
+                                }
+                                istack.back()=!istack.back();
+                                NEXT();
+                            op_bitnot:
+                                if(istack.empty())
+                                {
+                                    error="bytecode fastint bitnot underflow";
+                                    return false;
+                                }
+                                istack.back()=~istack.back();
+                                NEXT();
+                            op_bitand:
+                            op_bitor:
+                            op_bitxor:
+                            op_shl:
+                            op_shr:
+                            {
+                                if(istack.size()<2)
+                                {
+                                    error="bytecode fastint bitop underflow";
+                                    return false;
+                                }
+                                const int32_t rhs=istack.back();
+                                istack.pop_back();
+                                const int32_t lhs=istack.back();
+                                istack.pop_back();
+                                int32_t out=0;
+                                switch(ins.op)
+                                {
+                                    case OpCode::BitAnd: out=lhs & rhs; break;
+                                    case OpCode::BitOr: out=lhs | rhs; break;
+                                    case OpCode::BitXor: out=lhs ^ rhs; break;
+                                    case OpCode::Shl: out=lhs << rhs; break;
+                                    case OpCode::Shr: out=lhs >> rhs; break;
+                                    default: break;
+                                }
+                                istack.push_back(out);
+                                NEXT();
+                            }
+                            op_eq:
+                            op_ne:
+                            op_lt:
+                            op_le:
+                            op_gt:
+                            op_ge:
+                            {
+                                if(istack.size()<2)
+                                {
+                                    error="bytecode fastint compare underflow";
+                                    return false;
+                                }
+                                const int32_t rhs=istack.back();
+                                istack.pop_back();
+                                const int32_t lhs=istack.back();
+                                istack.pop_back();
+                                int32_t out=0;
+                                switch(ins.op)
+                                {
+                                    case OpCode::Eq: out=(lhs==rhs); break;
+                                    case OpCode::Ne: out=(lhs!=rhs); break;
+                                    case OpCode::Lt: out=(lhs<rhs); break;
+                                    case OpCode::Le: out=(lhs<=rhs); break;
+                                    case OpCode::Gt: out=(lhs>rhs); break;
+                                    case OpCode::Ge: out=(lhs>=rhs); break;
+                                    default: break;
+                                }
+                                istack.push_back(out);
+                                NEXT();
+                            }
+                            op_and:
+                            op_or:
+                            {
+                                if(istack.size()<2)
+                                {
+                                    error="bytecode fastint logical underflow";
+                                    return false;
+                                }
+                                const int32_t rhs=istack.back();
+                                istack.pop_back();
+                                const int32_t lhs=istack.back();
+                                istack.pop_back();
+                                const int32_t out=(ins.op==OpCode::And)?(lhs && rhs):(lhs || rhs);
+                                istack.push_back(out);
+                                NEXT();
+                            }
+                            op_jump:
+                                if(ins.a<0 || static_cast<size_t>(ins.a)>=frame->func->code.size())
+                                {
+                                    error="bytecode fastint jump out of range";
+                                    return false;
+                                }
+                                frame->pc=static_cast<size_t>(ins.a);
+                                NEXT();
+                            op_jump_if_false:
+                                if(istack.empty())
+                                {
+                                    error="bytecode fastint jump if false underflow";
+                                    return false;
+                                }
+                                {
+                                    const int32_t cond=istack.back();
+                                    istack.pop_back();
+                                    if(!cond)
+                                    {
+                                        if(ins.a<0 || static_cast<size_t>(ins.a)>=frame->func->code.size())
+                                        {
+                                            error="bytecode fastint jump if false out of range";
+                                            return false;
+                                        }
+                                        frame->pc=static_cast<size_t>(ins.a);
+                                    }
+                                }
+                                NEXT();
+                            op_jump_if_local_ge:
+                            op_jump_if_local_gt:
+                            op_jump_if_local_le:
+                            op_jump_if_local_lt:
+                            op_jump_if_local_eq:
+                            op_jump_if_local_ne:
+                            {
+                                const size_t index=frame->base+static_cast<size_t>(ins.a);
+                                if(index>=istack.size())
+                                {
+                                    error="bytecode fastint jump local out of range";
+                                    return false;
+                                }
+                                if(ins.b<0 || static_cast<size_t>(ins.b)>=frame->func->const_ints.size())
+                                {
+                                    error="bytecode fastint const out of range";
+                                    return false;
+                                }
+                                if(ins.c<0 || static_cast<size_t>(ins.c)>=frame->func->code.size())
+                                {
+                                    error="bytecode fastint jump out of range";
+                                    return false;
+                                }
+                                const int32_t lhs=istack[index];
+                                const int32_t rhs=frame->func->const_ints[static_cast<size_t>(ins.b)];
+                                bool cond=false;
+                                switch(ins.op)
+                                {
+                                    case OpCode::JumpIfLocalGeConst: cond=lhs>=rhs; break;
+                                    case OpCode::JumpIfLocalGtConst: cond=lhs>rhs; break;
+                                    case OpCode::JumpIfLocalLeConst: cond=lhs<=rhs; break;
+                                    case OpCode::JumpIfLocalLtConst: cond=lhs<rhs; break;
+                                    case OpCode::JumpIfLocalEqConst: cond=lhs==rhs; break;
+                                    case OpCode::JumpIfLocalNeConst: cond=lhs!=rhs; break;
+                                    default: break;
+                                }
+                                if(cond)
+                                    frame->pc=static_cast<size_t>(ins.c);
+                                NEXT();
+                            }
+                            op_cast:
+                                if(istack.empty())
+                                {
+                                    error="bytecode fastint cast underflow";
+                                    return false;
+                                }
+                                if(static_cast<TokenType>(ins.a)==TokenType::Bool)
+                                    istack.back()=istack.back()?1:0;
+                                NEXT();
+                            op_ret:
+                                if(istack.empty())
+                                {
+                                    error="bytecode fastint return underflow";
+                                    return false;
+                                }
+                                {
+                                    const int32_t ret=istack.back();
+                                    istack.pop_back();
+                                    callstack.pop_back();
+                                    if(!callstack.empty())
+                                    {
+                                        istack.push_back(ret);
+                                        frame=&callstack.back();
+                                        NEXT();
+                                    }
+                                    last_result=AstValue::MakeInt(ret);
+                                    return true;
+                                }
+                            op_default:
+                                error="bytecode fastint unsupported opcode";
+                                return false;
+
+                            #undef NEXT
+        #else
+                            if(frame->pc>=frame->func->code.size())
+                            {
+                                error="bytecode pc out of range";
+                                return false;
+                            }
+
+                            const Instruction ins=frame->func->code[frame->pc++];
+                            switch(ins.op)
+                            {
+                                case OpCode::Nop:
+                                    break;
+                                case OpCode::PushConst:
+                                {
+                                    if(ins.a<0 || static_cast<size_t>(ins.a)>=frame->func->const_ints.size())
+                                    {
+                                        error="bytecode fastint const out of range";
+                                        return false;
+                                    }
+                                    istack.push_back(frame->func->const_ints[static_cast<size_t>(ins.a)]);
+                                    break;
+                                }
+                                case OpCode::Pop:
+                                    if(istack.empty())
+                                    {
+                                        error="bytecode fastint pop underflow";
+                                        return false;
+                                    }
+                                    istack.pop_back();
+                                    break;
+                                case OpCode::LoadLocal:
+                                {
+                                    const size_t index=frame->base+static_cast<size_t>(ins.a);
+                                    if(index>=istack.size())
+                                    {
+                                        error="bytecode fastint load local out of range";
+                                        return false;
+                                    }
+                                    istack.push_back(istack[index]);
+                                    break;
+                                }
+                                case OpCode::StoreLocal:
+                                {
+                                    const size_t index=frame->base+static_cast<size_t>(ins.a);
+                                    if(index>=istack.size())
+                                    {
+                                        error="bytecode fastint store local out of range";
+                                        return false;
+                                    }
+                                    if(istack.empty())
+                                    {
+                                        error="bytecode fastint store local underflow";
+                                        return false;
+                                    }
+                                    const int32_t v=istack.back();
+                                    istack.pop_back();
+                                    istack[index]=v;
+                                    break;
+                                }
+                                case OpCode::AddLocalConst:
+                                case OpCode::SubLocalConst:
+                                case OpCode::MulLocalConst:
+                                case OpCode::DivLocalConst:
+                                case OpCode::ModLocalConst:
+                                case OpCode::BitAndLocalConst:
+                                case OpCode::BitOrLocalConst:
+                                case OpCode::BitXorLocalConst:
+                                case OpCode::ShlLocalConst:
+                                case OpCode::ShrLocalConst:
+                                case OpCode::AddLocalLocal:
+                                case OpCode::SubLocalLocal:
+                                case OpCode::MulLocalLocal:
+                                case OpCode::DivLocalLocal:
+                                case OpCode::ModLocalLocal:
+                                case OpCode::BitAndLocalLocal:
+                                case OpCode::BitOrLocalLocal:
+                                case OpCode::BitXorLocalLocal:
+                                case OpCode::ShlLocalLocal:
+                                case OpCode::ShrLocalLocal:
+                                {
+                                    const size_t index=frame->base+static_cast<size_t>(ins.a);
+#if HGL_BYTECODE_BOUNDS_CHECK
+                                    if(index>=istack.size())
+                                    {
+                                        error="bytecode fastint local out of range";
+                                        return false;
+                                    }
+#endif
+                                    int32_t rhs=0;
+                                    if(ins.op==OpCode::AddLocalLocal || ins.op==OpCode::SubLocalLocal
+                                        || ins.op==OpCode::MulLocalLocal || ins.op==OpCode::DivLocalLocal
+                                        || ins.op==OpCode::ModLocalLocal || ins.op==OpCode::BitAndLocalLocal
+                                        || ins.op==OpCode::BitOrLocalLocal || ins.op==OpCode::BitXorLocalLocal
+                                        || ins.op==OpCode::ShlLocalLocal || ins.op==OpCode::ShrLocalLocal)
+                                    {
+                                        const size_t other=frame->base+static_cast<size_t>(ins.b);
+#if HGL_BYTECODE_BOUNDS_CHECK
+                                        if(other>=istack.size())
+                                        {
+                                            error="bytecode fastint local out of range";
+                                            return false;
+                                        }
+#endif
+                                        rhs=istack[other];
+                                    }
+                                    else
+                                    {
+#if HGL_BYTECODE_BOUNDS_CHECK
+                                        if(ins.b<0 || static_cast<size_t>(ins.b)>=frame->func->const_ints.size())
+                                        {
+                                            error="bytecode fastint const out of range";
+                                            return false;
+                                        }
+#endif
+                                        rhs=frame->func->const_ints[static_cast<size_t>(ins.b)];
+                                    }
+
+                                    switch(ins.op)
+                                    {
+                                        case OpCode::AddLocalConst: istack[index]+=rhs; break;
+                                        case OpCode::SubLocalConst: istack[index]-=rhs; break;
+                                        case OpCode::MulLocalConst: istack[index]*=rhs; break;
+                                        case OpCode::DivLocalConst: istack[index]=(rhs?istack[index]/rhs:0); break;
+                                        case OpCode::ModLocalConst: istack[index]=(rhs?istack[index]%rhs:0); break;
+                                        case OpCode::BitAndLocalConst: istack[index]&=rhs; break;
+                                        case OpCode::BitOrLocalConst: istack[index]|=rhs; break;
+                                        case OpCode::BitXorLocalConst: istack[index]^=rhs; break;
+                                        case OpCode::ShlLocalConst: istack[index]=istack[index]<<rhs; break;
+                                        case OpCode::ShrLocalConst: istack[index]=istack[index]>>rhs; break;
+                                        case OpCode::AddLocalLocal: istack[index]+=rhs; break;
+                                        case OpCode::SubLocalLocal: istack[index]-=rhs; break;
+                                        case OpCode::MulLocalLocal: istack[index]*=rhs; break;
+                                        case OpCode::DivLocalLocal: istack[index]=(rhs?istack[index]/rhs:0); break;
+                                        case OpCode::ModLocalLocal: istack[index]=(rhs?istack[index]%rhs:0); break;
+                                        case OpCode::BitAndLocalLocal: istack[index]&=rhs; break;
+                                        case OpCode::BitOrLocalLocal: istack[index]|=rhs; break;
+                                        case OpCode::BitXorLocalLocal: istack[index]^=rhs; break;
+                                        case OpCode::ShlLocalLocal: istack[index]=istack[index]<<rhs; break;
+                                        case OpCode::ShrLocalLocal: istack[index]=istack[index]>>rhs; break;
+                                        default: break;
+                                    }
+                                    break;
+                                }
+                                case OpCode::Add:
+                                case OpCode::Sub:
+                                case OpCode::Mul:
+                                case OpCode::Div:
+                                case OpCode::Mod:
+                                {
+                                    if(istack.size()<2)
+                                    {
+                                        error="bytecode fastint binary underflow";
+                                        return false;
+                                    }
+                                    const int32_t rhs=istack.back();
+                                    istack.pop_back();
+                                    const int32_t lhs=istack.back();
+                                    istack.pop_back();
+                                    int32_t out=0;
+                                    switch(ins.op)
+                                    {
+                                        case OpCode::Add: out=lhs+rhs; break;
+                                        case OpCode::Sub: out=lhs-rhs; break;
+                                        case OpCode::Mul: out=lhs*rhs; break;
+                                        case OpCode::Div: out=rhs?lhs/rhs:0; break;
+                                        case OpCode::Mod: out=rhs?lhs%rhs:0; break;
+                                        default: break;
+                                    }
+                                    istack.push_back(out);
+                                    break;
+                                }
+                                case OpCode::Neg:
+                                {
+                                    if(istack.empty())
+                                    {
+                                        error="bytecode fastint neg underflow";
+                                        return false;
+                                    }
+                                    istack.back()=-istack.back();
+                                    break;
+                                }
+                                case OpCode::Not:
+                                {
+                                    if(istack.empty())
+                                    {
+                                        error="bytecode fastint not underflow";
+                                        return false;
+                                    }
+                                    istack.back()=!istack.back();
+                                    break;
+                                }
+                                case OpCode::BitNot:
+                                {
+                                    if(istack.empty())
+                                    {
+                                        error="bytecode fastint bitnot underflow";
+                                        return false;
+                                    }
+                                    istack.back()=~istack.back();
+                                    break;
+                                }
+                                case OpCode::BitAnd:
+                                case OpCode::BitOr:
+                                case OpCode::BitXor:
+                                case OpCode::Shl:
+                                case OpCode::Shr:
+                                {
+                                    if(istack.size()<2)
+                                    {
+                                        error="bytecode fastint bitop underflow";
+                                        return false;
+                                    }
+                                    const int32_t rhs=istack.back();
+                                    istack.pop_back();
+                                    const int32_t lhs=istack.back();
+                                    istack.pop_back();
+                                    int32_t out=0;
+                                    switch(ins.op)
+                                    {
+                                        case OpCode::BitAnd: out=lhs & rhs; break;
+                                        case OpCode::BitOr: out=lhs | rhs; break;
+                                        case OpCode::BitXor: out=lhs ^ rhs; break;
+                                        case OpCode::Shl: out=lhs << rhs; break;
+                                        case OpCode::Shr: out=lhs >> rhs; break;
+                                        default: break;
+                                    }
+                                    istack.push_back(out);
+                                    break;
+                                }
+                                case OpCode::Eq:
+                                case OpCode::Ne:
+                                case OpCode::Lt:
+                                case OpCode::Le:
+                                case OpCode::Gt:
+                                case OpCode::Ge:
+                                {
+                                    if(istack.size()<2)
+                                    {
+                                        error="bytecode fastint compare underflow";
+                                        return false;
+                                    }
+                                    const int32_t rhs=istack.back();
+                                    istack.pop_back();
+                                    const int32_t lhs=istack.back();
+                                    istack.pop_back();
+                                    int32_t out=0;
+                                    switch(ins.op)
+                                    {
+                                        case OpCode::Eq: out=(lhs==rhs); break;
+                                        case OpCode::Ne: out=(lhs!=rhs); break;
+                                        case OpCode::Lt: out=(lhs<rhs); break;
+                                        case OpCode::Le: out=(lhs<=rhs); break;
+                                        case OpCode::Gt: out=(lhs>rhs); break;
+                                        case OpCode::Ge: out=(lhs>=rhs); break;
+                                        default: break;
+                                    }
+                                    istack.push_back(out);
+                                    break;
+                                }
+                                case OpCode::And:
+                                case OpCode::Or:
+                                {
+                                    if(istack.size()<2)
+                                    {
+                                        error="bytecode fastint logical underflow";
+                                        return false;
+                                    }
+                                    const int32_t rhs=istack.back();
+                                    istack.pop_back();
+                                    const int32_t lhs=istack.back();
+                                    istack.pop_back();
+                                    const int32_t out=(ins.op==OpCode::And)?(lhs && rhs):(lhs || rhs);
+                                    istack.push_back(out);
+                                    break;
+                                }
+                                case OpCode::Jump:
+                                {
+#if HGL_BYTECODE_BOUNDS_CHECK
+                                    if(ins.a<0 || static_cast<size_t>(ins.a)>=frame->func->code.size())
+                                    {
+                                        error="bytecode fastint jump out of range";
+                                        return false;
+                                    }
+#endif
+                                    frame->pc=static_cast<size_t>(ins.a);
+                                    break;
+                                }
+                                case OpCode::JumpIfFalse:
+                                {
+                                    if(istack.empty())
+                                    {
+                                        error="bytecode fastint jump if false underflow";
+                                        return false;
+                                    }
+                                    const int32_t cond=istack.back();
+                                    istack.pop_back();
+                                    if(!cond)
+                                    {
+#if HGL_BYTECODE_BOUNDS_CHECK
+                                        if(ins.a<0 || static_cast<size_t>(ins.a)>=frame->func->code.size())
+                                        {
+                                            error="bytecode fastint jump if false out of range";
+                                            return false;
+                                        }
+#endif
+                                        frame->pc=static_cast<size_t>(ins.a);
+                                    }
+                                    break;
+                                }
+                                case OpCode::JumpIfLocalGeConst:
+                                case OpCode::JumpIfLocalGtConst:
+                                case OpCode::JumpIfLocalLeConst:
+                                case OpCode::JumpIfLocalLtConst:
+                                case OpCode::JumpIfLocalEqConst:
+                                case OpCode::JumpIfLocalNeConst:
+                                case OpCode::JumpIfLocalGeLocal:
+                                case OpCode::JumpIfLocalGtLocal:
+                                case OpCode::JumpIfLocalLeLocal:
+                                case OpCode::JumpIfLocalLtLocal:
+                                case OpCode::JumpIfLocalEqLocal:
+                                case OpCode::JumpIfLocalNeLocal:
+                                {
+                                    const size_t index=frame->base+static_cast<size_t>(ins.a);
+#if HGL_BYTECODE_BOUNDS_CHECK
+                                    if(index>=istack.size())
+                                    {
+                                        error="bytecode fastint jump local out of range";
+                                        return false;
+                                    }
+                                    if(ins.c<0 || static_cast<size_t>(ins.c)>=frame->func->code.size())
+                                    {
+                                        error="bytecode fastint jump out of range";
+                                        return false;
+                                    }
+#endif
+                                    const int32_t lhs=istack[index];
+                                    int32_t rhs=0;
+                                    if(ins.op==OpCode::JumpIfLocalGeLocal || ins.op==OpCode::JumpIfLocalGtLocal
+                                        || ins.op==OpCode::JumpIfLocalLeLocal || ins.op==OpCode::JumpIfLocalLtLocal
+                                        || ins.op==OpCode::JumpIfLocalEqLocal || ins.op==OpCode::JumpIfLocalNeLocal)
+                                    {
+                                        const size_t other=frame->base+static_cast<size_t>(ins.b);
+#if HGL_BYTECODE_BOUNDS_CHECK
+                                        if(other>=istack.size())
+                                        {
+                                            error="bytecode fastint jump local out of range";
+                                            return false;
+                                        }
+#endif
+                                        rhs=istack[other];
+                                    }
+                                    else
+                                    {
+#if HGL_BYTECODE_BOUNDS_CHECK
+                                        if(ins.b<0 || static_cast<size_t>(ins.b)>=frame->func->const_ints.size())
+                                        {
+                                            error="bytecode fastint const out of range";
+                                            return false;
+                                        }
+#endif
+                                        rhs=frame->func->const_ints[static_cast<size_t>(ins.b)];
+                                    }
+                                    bool cond=false;
+                                    switch(ins.op)
+                                    {
+                                        case OpCode::JumpIfLocalGeConst: cond=lhs>=rhs; break;
+                                        case OpCode::JumpIfLocalGtConst: cond=lhs>rhs; break;
+                                        case OpCode::JumpIfLocalLeConst: cond=lhs<=rhs; break;
+                                        case OpCode::JumpIfLocalLtConst: cond=lhs<rhs; break;
+                                        case OpCode::JumpIfLocalEqConst: cond=lhs==rhs; break;
+                                        case OpCode::JumpIfLocalNeConst: cond=lhs!=rhs; break;
+                                        case OpCode::JumpIfLocalGeLocal: cond=lhs>=rhs; break;
+                                        case OpCode::JumpIfLocalGtLocal: cond=lhs>rhs; break;
+                                        case OpCode::JumpIfLocalLeLocal: cond=lhs<=rhs; break;
+                                        case OpCode::JumpIfLocalLtLocal: cond=lhs<rhs; break;
+                                        case OpCode::JumpIfLocalEqLocal: cond=lhs==rhs; break;
+                                        case OpCode::JumpIfLocalNeLocal: cond=lhs!=rhs; break;
+                                        default: break;
+                                    }
+                                    if(cond)
+                                        frame->pc=static_cast<size_t>(ins.c);
+                                    break;
+                                }
+                                case OpCode::Cast:
+                                {
+                                    if(istack.empty())
+                                    {
+                                        error="bytecode fastint cast underflow";
+                                        return false;
+                                    }
+                                    const TokenType target=static_cast<TokenType>(ins.a);
+                                    if(target==TokenType::Bool)
+                                        istack.back()=istack.back()?1:0;
+                                    break;
+                                }
+                                case OpCode::Ret:
+                                {
+                                    if(istack.empty())
+                                    {
+                                        error="bytecode fastint return underflow";
+                                        return false;
+                                    }
+                                    const int32_t ret=istack.back();
+                                    istack.pop_back();
+                                    callstack.pop_back();
+                                    if(!callstack.empty())
+                                    {
+                                        istack.push_back(ret);
+                                        break;
+                                    }
+                                    last_result=AstValue::MakeInt(ret);
+                                    return true;
+                                }
+                                default:
+                                    error="bytecode fastint unsupported opcode";
+                                    return false;
+                            }
+        #endif
+                }
+
+                return error.empty();
+            }
+        }
+
+        if(func.fast_float)
+        {
+            bool args_ok=true;
+            bool use_double_result=func.fast_double;
+            for(const AstValue &v:args)
+            {
+                switch(v.type)
+                {
+                    case TokenType::Bool:
+                    case TokenType::Int:
+                    case TokenType::Int8:
+                    case TokenType::Int16:
+                    case TokenType::UInt:
+                    case TokenType::UInt8:
+                    case TokenType::UInt16:
+                    case TokenType::Float:
+                    case TokenType::Double:
+                        break;
+                    default:
+                        args_ok=false;
+                        break;
+                }
+                if(v.type==TokenType::Double)
+                    use_double_result=true;
+                if(!args_ok)
+                    break;
+            }
+
+            if(args_ok)
+            {
+                std::vector<double> fstack;
+                fstack.reserve(static_cast<size_t>(func.local_count)+args.size()+16);
+                callstack.reserve(16);
+
+                const size_t base=fstack.size();
+                for(const AstValue &v:args)
+                    fstack.push_back(v.ToDouble());
+
+                if(func.local_count>func.param_count)
+                {
+                    const size_t extra=static_cast<size_t>(func.local_count-func.param_count);
+                    fstack.resize(fstack.size()+extra,0.0);
+                }
+
+                callstack.push_back(Frame{&func,0,base});
+
+                while(!callstack.empty())
+                {
                     Frame &frame=callstack.back();
                     if(!frame.func)
                     {
@@ -237,70 +1145,115 @@ namespace hgl::devil
                             break;
                         case OpCode::PushConst:
                         {
-                            if(ins.a<0 || static_cast<size_t>(ins.a)>=frame.func->const_ints.size())
+                            if(ins.a<0 || static_cast<size_t>(ins.a)>=frame.func->const_floats.size())
                             {
-                                error="bytecode fastint const out of range";
+                                error="bytecode fastfloat const out of range";
                                 return false;
                             }
-                            istack.push_back(frame.func->const_ints[static_cast<size_t>(ins.a)]);
+                            fstack.push_back(frame.func->const_floats[static_cast<size_t>(ins.a)]);
                             break;
                         }
                         case OpCode::Pop:
-                            if(istack.empty())
+                            if(fstack.empty())
                             {
-                                error="bytecode fastint pop underflow";
+                                error="bytecode fastfloat pop underflow";
                                 return false;
                             }
-                            istack.pop_back();
+                            fstack.pop_back();
                             break;
                         case OpCode::LoadLocal:
                         {
                             const size_t index=frame.base+static_cast<size_t>(ins.a);
-                            if(index>=istack.size())
+#if HGL_BYTECODE_BOUNDS_CHECK
+                            if(index>=fstack.size())
                             {
-                                error="bytecode fastint load local out of range";
+                                error="bytecode fastfloat load local out of range";
                                 return false;
                             }
-                            istack.push_back(istack[index]);
-                            break;
-                        }
-                        case OpCode::AddLocalConst:
-                        case OpCode::SubLocalConst:
-                        {
-                            const size_t index=frame.base+static_cast<size_t>(ins.a);
-                            if(index>=istack.size())
-                            {
-                                error="bytecode fastint add/sub local out of range";
-                                return false;
-                            }
-                            if(ins.b<0 || static_cast<size_t>(ins.b)>=frame.func->const_ints.size())
-                            {
-                                error="bytecode fastint const out of range";
-                                return false;
-                            }
-                            const int32_t rhs=frame.func->const_ints[static_cast<size_t>(ins.b)];
-                            if(ins.op==OpCode::AddLocalConst)
-                                istack[index]+=rhs;
-                            else
-                                istack[index]-=rhs;
+#endif
+                            fstack.push_back(fstack[index]);
                             break;
                         }
                         case OpCode::StoreLocal:
                         {
                             const size_t index=frame.base+static_cast<size_t>(ins.a);
-                            if(index>=istack.size())
+#if HGL_BYTECODE_BOUNDS_CHECK
+                            if(index>=fstack.size())
                             {
-                                error="bytecode fastint store local out of range";
+                                error="bytecode fastfloat store local out of range";
                                 return false;
                             }
-                            if(istack.empty())
+#endif
+                            if(fstack.empty())
                             {
-                                error="bytecode fastint store local underflow";
+                                error="bytecode fastfloat store local underflow";
                                 return false;
                             }
-                            const int32_t v=istack.back();
-                            istack.pop_back();
-                            istack[index]=v;
+                            const double v=fstack.back();
+                            fstack.pop_back();
+                            fstack[index]=v;
+                            break;
+                        }
+                        case OpCode::AddLocalConst:
+                        case OpCode::SubLocalConst:
+                        case OpCode::MulLocalConst:
+                        case OpCode::DivLocalConst:
+                        case OpCode::ModLocalConst:
+                        case OpCode::AddLocalLocal:
+                        case OpCode::SubLocalLocal:
+                        case OpCode::MulLocalLocal:
+                        case OpCode::DivLocalLocal:
+                        case OpCode::ModLocalLocal:
+                        {
+                            const size_t index=frame.base+static_cast<size_t>(ins.a);
+#if HGL_BYTECODE_BOUNDS_CHECK
+                            if(index>=fstack.size())
+                            {
+                                error="bytecode fastfloat local out of range";
+                                return false;
+                            }
+#endif
+                            double rhs=0.0;
+                            if(ins.op==OpCode::AddLocalLocal || ins.op==OpCode::SubLocalLocal
+                                || ins.op==OpCode::MulLocalLocal || ins.op==OpCode::DivLocalLocal
+                                || ins.op==OpCode::ModLocalLocal)
+                            {
+                                const size_t other=frame.base+static_cast<size_t>(ins.b);
+#if HGL_BYTECODE_BOUNDS_CHECK
+                                if(other>=fstack.size())
+                                {
+                                    error="bytecode fastfloat local out of range";
+                                    return false;
+                                }
+#endif
+                                rhs=fstack[other];
+                            }
+                            else
+                            {
+#if HGL_BYTECODE_BOUNDS_CHECK
+                                if(ins.b<0 || static_cast<size_t>(ins.b)>=frame.func->const_floats.size())
+                                {
+                                    error="bytecode fastfloat const out of range";
+                                    return false;
+                                }
+#endif
+                                rhs=frame.func->const_floats[static_cast<size_t>(ins.b)];
+                            }
+
+                            switch(ins.op)
+                            {
+                                case OpCode::AddLocalConst: fstack[index]+=rhs; break;
+                                case OpCode::SubLocalConst: fstack[index]-=rhs; break;
+                                case OpCode::MulLocalConst: fstack[index]*=rhs; break;
+                                case OpCode::DivLocalConst: fstack[index]=(rhs!=0.0?fstack[index]/rhs:0.0); break;
+                                case OpCode::ModLocalConst: fstack[index]=(rhs!=0.0?std::fmod(fstack[index],rhs):0.0); break;
+                                case OpCode::AddLocalLocal: fstack[index]+=rhs; break;
+                                case OpCode::SubLocalLocal: fstack[index]-=rhs; break;
+                                case OpCode::MulLocalLocal: fstack[index]*=rhs; break;
+                                case OpCode::DivLocalLocal: fstack[index]=(rhs!=0.0?fstack[index]/rhs:0.0); break;
+                                case OpCode::ModLocalLocal: fstack[index]=(rhs!=0.0?std::fmod(fstack[index],rhs):0.0); break;
+                                default: break;
+                            }
                             break;
                         }
                         case OpCode::Add:
@@ -309,84 +1262,46 @@ namespace hgl::devil
                         case OpCode::Div:
                         case OpCode::Mod:
                         {
-                            if(istack.size()<2)
+                            if(fstack.size()<2)
                             {
-                                error="bytecode fastint binary underflow";
+                                error="bytecode fastfloat binary underflow";
                                 return false;
                             }
-                            const int32_t rhs=istack.back();
-                            istack.pop_back();
-                            const int32_t lhs=istack.back();
-                            istack.pop_back();
-                            int32_t out=0;
+                            const double rhs=fstack.back();
+                            fstack.pop_back();
+                            const double lhs=fstack.back();
+                            fstack.pop_back();
+                            double out=0.0;
                             switch(ins.op)
                             {
                                 case OpCode::Add: out=lhs+rhs; break;
                                 case OpCode::Sub: out=lhs-rhs; break;
                                 case OpCode::Mul: out=lhs*rhs; break;
-                                case OpCode::Div: out=rhs?lhs/rhs:0; break;
-                                case OpCode::Mod: out=rhs?lhs%rhs:0; break;
+                                case OpCode::Div: out=(rhs!=0.0?lhs/rhs:0.0); break;
+                                case OpCode::Mod: out=(rhs!=0.0?std::fmod(lhs,rhs):0.0); break;
                                 default: break;
                             }
-                            istack.push_back(out);
+                            fstack.push_back(out);
                             break;
                         }
                         case OpCode::Neg:
                         {
-                            if(istack.empty())
+                            if(fstack.empty())
                             {
-                                error="bytecode fastint neg underflow";
+                                error="bytecode fastfloat neg underflow";
                                 return false;
                             }
-                            istack.back()=-istack.back();
+                            fstack.back()=-fstack.back();
                             break;
                         }
                         case OpCode::Not:
                         {
-                            if(istack.empty())
+                            if(fstack.empty())
                             {
-                                error="bytecode fastint not underflow";
+                                error="bytecode fastfloat not underflow";
                                 return false;
                             }
-                            istack.back()=!istack.back();
-                            break;
-                        }
-                        case OpCode::BitNot:
-                        {
-                            if(istack.empty())
-                            {
-                                error="bytecode fastint bitnot underflow";
-                                return false;
-                            }
-                            istack.back()=~istack.back();
-                            break;
-                        }
-                        case OpCode::BitAnd:
-                        case OpCode::BitOr:
-                        case OpCode::BitXor:
-                        case OpCode::Shl:
-                        case OpCode::Shr:
-                        {
-                            if(istack.size()<2)
-                            {
-                                error="bytecode fastint bitop underflow";
-                                return false;
-                            }
-                            const int32_t rhs=istack.back();
-                            istack.pop_back();
-                            const int32_t lhs=istack.back();
-                            istack.pop_back();
-                            int32_t out=0;
-                            switch(ins.op)
-                            {
-                                case OpCode::BitAnd: out=lhs & rhs; break;
-                                case OpCode::BitOr: out=lhs | rhs; break;
-                                case OpCode::BitXor: out=lhs ^ rhs; break;
-                                case OpCode::Shl: out=lhs << rhs; break;
-                                case OpCode::Shr: out=lhs >> rhs; break;
-                                default: break;
-                            }
-                            istack.push_back(out);
+                            fstack.back()=(fstack.back()!=0.0)?0.0:1.0;
                             break;
                         }
                         case OpCode::Eq:
@@ -396,16 +1311,16 @@ namespace hgl::devil
                         case OpCode::Gt:
                         case OpCode::Ge:
                         {
-                            if(istack.size()<2)
+                            if(fstack.size()<2)
                             {
-                                error="bytecode fastint compare underflow";
+                                error="bytecode fastfloat compare underflow";
                                 return false;
                             }
-                            const int32_t rhs=istack.back();
-                            istack.pop_back();
-                            const int32_t lhs=istack.back();
-                            istack.pop_back();
-                            int32_t out=0;
+                            const double rhs=fstack.back();
+                            fstack.pop_back();
+                            const double lhs=fstack.back();
+                            fstack.pop_back();
+                            bool out=false;
                             switch(ins.op)
                             {
                                 case OpCode::Eq: out=(lhs==rhs); break;
@@ -416,109 +1331,177 @@ namespace hgl::devil
                                 case OpCode::Ge: out=(lhs>=rhs); break;
                                 default: break;
                             }
-                            istack.push_back(out);
+                            fstack.push_back(out?1.0:0.0);
                             break;
                         }
                         case OpCode::And:
                         case OpCode::Or:
                         {
-                            if(istack.size()<2)
+                            if(fstack.size()<2)
                             {
-                                error="bytecode fastint logical underflow";
+                                error="bytecode fastfloat logical underflow";
                                 return false;
                             }
-                            const int32_t rhs=istack.back();
-                            istack.pop_back();
-                            const int32_t lhs=istack.back();
-                            istack.pop_back();
-                            const int32_t out=(ins.op==OpCode::And)?(lhs && rhs):(lhs || rhs);
-                            istack.push_back(out);
+                            const double rhs=fstack.back();
+                            fstack.pop_back();
+                            const double lhs=fstack.back();
+                            fstack.pop_back();
+                            const bool out=(ins.op==OpCode::And)?(lhs!=0.0 && rhs!=0.0):(lhs!=0.0 || rhs!=0.0);
+                            fstack.push_back(out?1.0:0.0);
                             break;
                         }
                         case OpCode::Jump:
                         {
+#if HGL_BYTECODE_BOUNDS_CHECK
                             if(ins.a<0 || static_cast<size_t>(ins.a)>=frame.func->code.size())
                             {
-                                error="bytecode fastint jump out of range";
+                                error="bytecode fastfloat jump out of range";
                                 return false;
                             }
+#endif
                             frame.pc=static_cast<size_t>(ins.a);
                             break;
                         }
                         case OpCode::JumpIfFalse:
                         {
-                            if(istack.empty())
+                            if(fstack.empty())
                             {
-                                error="bytecode fastint jump if false underflow";
+                                error="bytecode fastfloat jump if false underflow";
                                 return false;
                             }
-                            const int32_t cond=istack.back();
-                            istack.pop_back();
-                            if(!cond)
+                            const double cond=fstack.back();
+                            fstack.pop_back();
+                            if(cond==0.0)
                             {
+#if HGL_BYTECODE_BOUNDS_CHECK
                                 if(ins.a<0 || static_cast<size_t>(ins.a)>=frame.func->code.size())
                                 {
-                                    error="bytecode fastint jump if false out of range";
+                                    error="bytecode fastfloat jump if false out of range";
                                     return false;
                                 }
+#endif
                                 frame.pc=static_cast<size_t>(ins.a);
                             }
                             break;
                         }
                         case OpCode::JumpIfLocalGeConst:
+                        case OpCode::JumpIfLocalGtConst:
+                        case OpCode::JumpIfLocalLeConst:
+                        case OpCode::JumpIfLocalLtConst:
+                        case OpCode::JumpIfLocalEqConst:
+                        case OpCode::JumpIfLocalNeConst:
+                        case OpCode::JumpIfLocalGeLocal:
+                        case OpCode::JumpIfLocalGtLocal:
+                        case OpCode::JumpIfLocalLeLocal:
+                        case OpCode::JumpIfLocalLtLocal:
+                        case OpCode::JumpIfLocalEqLocal:
+                        case OpCode::JumpIfLocalNeLocal:
                         {
                             const size_t index=frame.base+static_cast<size_t>(ins.a);
-                            if(index>=istack.size())
+#if HGL_BYTECODE_BOUNDS_CHECK
+                            if(index>=fstack.size())
                             {
-                                error="bytecode fastint jump local out of range";
-                                return false;
-                            }
-                            if(ins.b<0 || static_cast<size_t>(ins.b)>=frame.func->const_ints.size())
-                            {
-                                error="bytecode fastint const out of range";
+                                error="bytecode fastfloat jump local out of range";
                                 return false;
                             }
                             if(ins.c<0 || static_cast<size_t>(ins.c)>=frame.func->code.size())
                             {
-                                error="bytecode fastint jump out of range";
+                                error="bytecode fastfloat jump out of range";
                                 return false;
                             }
-                            if(istack[index]>=frame.func->const_ints[static_cast<size_t>(ins.b)])
+#endif
+                            const double lhs=fstack[index];
+                            double rhs=0.0;
+                            if(ins.op==OpCode::JumpIfLocalGeLocal || ins.op==OpCode::JumpIfLocalGtLocal
+                                || ins.op==OpCode::JumpIfLocalLeLocal || ins.op==OpCode::JumpIfLocalLtLocal
+                                || ins.op==OpCode::JumpIfLocalEqLocal || ins.op==OpCode::JumpIfLocalNeLocal)
+                            {
+                                const size_t other=frame.base+static_cast<size_t>(ins.b);
+#if HGL_BYTECODE_BOUNDS_CHECK
+                                if(other>=fstack.size())
+                                {
+                                    error="bytecode fastfloat jump local out of range";
+                                    return false;
+                                }
+#endif
+                                rhs=fstack[other];
+                            }
+                            else
+                            {
+#if HGL_BYTECODE_BOUNDS_CHECK
+                                if(ins.b<0 || static_cast<size_t>(ins.b)>=frame.func->const_floats.size())
+                                {
+                                    error="bytecode fastfloat const out of range";
+                                    return false;
+                                }
+#endif
+                                rhs=frame.func->const_floats[static_cast<size_t>(ins.b)];
+                            }
+                            bool cond=false;
+                            switch(ins.op)
+                            {
+                                case OpCode::JumpIfLocalGeConst: cond=lhs>=rhs; break;
+                                case OpCode::JumpIfLocalGtConst: cond=lhs>rhs; break;
+                                case OpCode::JumpIfLocalLeConst: cond=lhs<=rhs; break;
+                                case OpCode::JumpIfLocalLtConst: cond=lhs<rhs; break;
+                                case OpCode::JumpIfLocalEqConst: cond=lhs==rhs; break;
+                                case OpCode::JumpIfLocalNeConst: cond=lhs!=rhs; break;
+                                case OpCode::JumpIfLocalGeLocal: cond=lhs>=rhs; break;
+                                case OpCode::JumpIfLocalGtLocal: cond=lhs>rhs; break;
+                                case OpCode::JumpIfLocalLeLocal: cond=lhs<=rhs; break;
+                                case OpCode::JumpIfLocalLtLocal: cond=lhs<rhs; break;
+                                case OpCode::JumpIfLocalEqLocal: cond=lhs==rhs; break;
+                                case OpCode::JumpIfLocalNeLocal: cond=lhs!=rhs; break;
+                                default: break;
+                            }
+                            if(cond)
                                 frame.pc=static_cast<size_t>(ins.c);
                             break;
                         }
                         case OpCode::Cast:
                         {
-                            if(istack.empty())
+                            if(fstack.empty())
                             {
-                                error="bytecode fastint cast underflow";
+                                error="bytecode fastfloat cast underflow";
                                 return false;
                             }
                             const TokenType target=static_cast<TokenType>(ins.a);
                             if(target==TokenType::Bool)
-                                istack.back()=istack.back()?1:0;
+                                fstack.back()=(fstack.back()!=0.0)?1.0:0.0;
+                            else if(target==TokenType::Float)
+                                fstack.back()=static_cast<float>(fstack.back());
+                            else if(target==TokenType::Double)
+                                fstack.back()=fstack.back();
+                            else
+                            {
+                                error="bytecode fastfloat unsupported cast";
+                                return false;
+                            }
                             break;
                         }
                         case OpCode::Ret:
                         {
-                            if(istack.empty())
+                            if(fstack.empty())
                             {
-                                error="bytecode fastint return underflow";
+                                error="bytecode fastfloat return underflow";
                                 return false;
                             }
-                            const int32_t ret=istack.back();
-                            istack.pop_back();
+                            const double ret=fstack.back();
+                            fstack.pop_back();
                             callstack.pop_back();
                             if(!callstack.empty())
                             {
-                                istack.push_back(ret);
+                                fstack.push_back(ret);
                                 break;
                             }
-                            last_result=AstValue::MakeInt(ret);
+                            if(use_double_result)
+                                last_result=AstValue::MakeDouble(ret);
+                            else
+                                last_result=AstValue::MakeFloat(static_cast<float>(ret));
                             return true;
                         }
                         default:
-                            error="bytecode fastint unsupported opcode";
+                            error="bytecode fastfloat unsupported opcode";
                             return false;
                     }
                 }
@@ -634,6 +1617,24 @@ namespace hgl::devil
             }
             case OpCode::AddLocalConst:
             case OpCode::SubLocalConst:
+            case OpCode::MulLocalConst:
+            case OpCode::DivLocalConst:
+            case OpCode::ModLocalConst:
+            case OpCode::BitAndLocalConst:
+            case OpCode::BitOrLocalConst:
+            case OpCode::BitXorLocalConst:
+            case OpCode::ShlLocalConst:
+            case OpCode::ShrLocalConst:
+            case OpCode::AddLocalLocal:
+            case OpCode::SubLocalLocal:
+            case OpCode::MulLocalLocal:
+            case OpCode::DivLocalLocal:
+            case OpCode::ModLocalLocal:
+            case OpCode::BitAndLocalLocal:
+            case OpCode::BitOrLocalLocal:
+            case OpCode::BitXorLocalLocal:
+            case OpCode::ShlLocalLocal:
+            case OpCode::ShrLocalLocal:
             {
                 const size_t index=frame.base+static_cast<size_t>(ins.a);
                 if(index>=value_stack.size())
@@ -647,22 +1648,76 @@ namespace hgl::devil
                     return false;
                 }
                 AstValue lhs=value_stack[index];
-                const AstValue &rhs=frame.func->constants[static_cast<size_t>(ins.b)];
-                AstValue out=BinaryNumeric(lhs,rhs,ins.op==OpCode::AddLocalConst?OpCode::Add:OpCode::Sub);
+                AstValue rhs;
+                if(ins.op==OpCode::AddLocalLocal || ins.op==OpCode::SubLocalLocal
+                    || ins.op==OpCode::MulLocalLocal || ins.op==OpCode::DivLocalLocal
+                    || ins.op==OpCode::ModLocalLocal || ins.op==OpCode::BitAndLocalLocal
+                    || ins.op==OpCode::BitOrLocalLocal || ins.op==OpCode::BitXorLocalLocal
+                    || ins.op==OpCode::ShlLocalLocal || ins.op==OpCode::ShrLocalLocal)
+                {
+                    const size_t other=frame.base+static_cast<size_t>(ins.b);
+                    if(other>=value_stack.size())
+                    {
+                        error="bytecode local out of range";
+                        return false;
+                    }
+                    rhs=value_stack[other];
+                }
+                else
+                {
+                    if(ins.b<0 || static_cast<size_t>(ins.b)>=frame.func->constants.size())
+                    {
+                        error="bytecode const out of range";
+                        return false;
+                    }
+                    rhs=frame.func->constants[static_cast<size_t>(ins.b)];
+                }
+                OpCode op=OpCode::Add;
+                switch(ins.op)
+                {
+                    case OpCode::AddLocalConst: op=OpCode::Add; break;
+                    case OpCode::SubLocalConst: op=OpCode::Sub; break;
+                    case OpCode::MulLocalConst: op=OpCode::Mul; break;
+                    case OpCode::DivLocalConst: op=OpCode::Div; break;
+                    case OpCode::ModLocalConst: op=OpCode::Mod; break;
+                    case OpCode::BitAndLocalConst: op=OpCode::BitAnd; break;
+                    case OpCode::BitOrLocalConst: op=OpCode::BitOr; break;
+                    case OpCode::BitXorLocalConst: op=OpCode::BitXor; break;
+                    case OpCode::ShlLocalConst: op=OpCode::Shl; break;
+                    case OpCode::ShrLocalConst: op=OpCode::Shr; break;
+                    case OpCode::AddLocalLocal: op=OpCode::Add; break;
+                    case OpCode::SubLocalLocal: op=OpCode::Sub; break;
+                    case OpCode::MulLocalLocal: op=OpCode::Mul; break;
+                    case OpCode::DivLocalLocal: op=OpCode::Div; break;
+                    case OpCode::ModLocalLocal: op=OpCode::Mod; break;
+                    case OpCode::BitAndLocalLocal: op=OpCode::BitAnd; break;
+                    case OpCode::BitOrLocalLocal: op=OpCode::BitOr; break;
+                    case OpCode::BitXorLocalLocal: op=OpCode::BitXor; break;
+                    case OpCode::ShlLocalLocal: op=OpCode::Shl; break;
+                    case OpCode::ShrLocalLocal: op=OpCode::Shr; break;
+                    default: break;
+                }
+                AstValue out=BinaryNumeric(lhs,rhs,op);
                 value_stack[index]=std::move(out);
                 return true;
             }
             case OpCode::JumpIfLocalGeConst:
+            case OpCode::JumpIfLocalGtConst:
+            case OpCode::JumpIfLocalLeConst:
+            case OpCode::JumpIfLocalLtConst:
+            case OpCode::JumpIfLocalEqConst:
+            case OpCode::JumpIfLocalNeConst:
+            case OpCode::JumpIfLocalGeLocal:
+            case OpCode::JumpIfLocalGtLocal:
+            case OpCode::JumpIfLocalLeLocal:
+            case OpCode::JumpIfLocalLtLocal:
+            case OpCode::JumpIfLocalEqLocal:
+            case OpCode::JumpIfLocalNeLocal:
             {
                 const size_t index=frame.base+static_cast<size_t>(ins.a);
                 if(index>=value_stack.size())
                 {
                     error="bytecode jump local out of range";
-                    return false;
-                }
-                if(ins.b<0 || static_cast<size_t>(ins.b)>=frame.func->constants.size())
-                {
-                    error="bytecode const out of range";
                     return false;
                 }
                 if(ins.c<0 || static_cast<size_t>(ins.c)>=frame.func->code.size())
@@ -671,8 +1726,48 @@ namespace hgl::devil
                     return false;
                 }
                 const AstValue &lhs=value_stack[index];
-                const AstValue &rhs=frame.func->constants[static_cast<size_t>(ins.b)];
-                if(lhs.ToFloat()>=rhs.ToFloat())
+                AstValue rhs;
+                if(ins.op==OpCode::JumpIfLocalGeLocal || ins.op==OpCode::JumpIfLocalGtLocal
+                    || ins.op==OpCode::JumpIfLocalLeLocal || ins.op==OpCode::JumpIfLocalLtLocal
+                    || ins.op==OpCode::JumpIfLocalEqLocal || ins.op==OpCode::JumpIfLocalNeLocal)
+                {
+                    const size_t other=frame.base+static_cast<size_t>(ins.b);
+                    if(other>=value_stack.size())
+                    {
+                        error="bytecode local out of range";
+                        return false;
+                    }
+                    rhs=value_stack[other];
+                }
+                else
+                {
+                    if(ins.b<0 || static_cast<size_t>(ins.b)>=frame.func->constants.size())
+                    {
+                        error="bytecode const out of range";
+                        return false;
+                    }
+                    rhs=frame.func->constants[static_cast<size_t>(ins.b)];
+                }
+                const double lv=lhs.ToDouble();
+                const double rv=rhs.ToDouble();
+                bool cond=false;
+                switch(ins.op)
+                {
+                    case OpCode::JumpIfLocalGeConst: cond=lv>=rv; break;
+                    case OpCode::JumpIfLocalGtConst: cond=lv>rv; break;
+                    case OpCode::JumpIfLocalLeConst: cond=lv<=rv; break;
+                    case OpCode::JumpIfLocalLtConst: cond=lv<rv; break;
+                    case OpCode::JumpIfLocalEqConst: cond=lv==rv; break;
+                    case OpCode::JumpIfLocalNeConst: cond=lv!=rv; break;
+                    case OpCode::JumpIfLocalGeLocal: cond=lv>=rv; break;
+                    case OpCode::JumpIfLocalGtLocal: cond=lv>rv; break;
+                    case OpCode::JumpIfLocalLeLocal: cond=lv<=rv; break;
+                    case OpCode::JumpIfLocalLtLocal: cond=lv<rv; break;
+                    case OpCode::JumpIfLocalEqLocal: cond=lv==rv; break;
+                    case OpCode::JumpIfLocalNeLocal: cond=lv!=rv; break;
+                    default: break;
+                }
+                if(cond)
                     frame.pc=static_cast<size_t>(ins.c);
                 return true;
             }
@@ -729,7 +1824,9 @@ namespace hgl::devil
                     error="bytecode neg underflow";
                     return false;
                 }
-                if(v.type==TokenType::Float)
+                if(v.type==TokenType::Double)
+                    value_stack.push_back(AstValue::MakeDouble(-v.ToDouble()));
+                else if(v.type==TokenType::Float)
                     value_stack.push_back(AstValue::MakeFloat(-v.ToFloat()));
                 else
                     value_stack.push_back(AstValue::MakeInt(-v.ToInt()));

@@ -30,7 +30,36 @@ namespace hgl::devil
                     case OpCode::StoreLocal:
                     case OpCode::AddLocalConst:
                     case OpCode::SubLocalConst:
+                    case OpCode::MulLocalConst:
+                    case OpCode::DivLocalConst:
+                    case OpCode::ModLocalConst:
+                    case OpCode::BitAndLocalConst:
+                    case OpCode::BitOrLocalConst:
+                    case OpCode::BitXorLocalConst:
+                    case OpCode::ShlLocalConst:
+                    case OpCode::ShrLocalConst:
+                    case OpCode::AddLocalLocal:
+                    case OpCode::SubLocalLocal:
+                    case OpCode::MulLocalLocal:
+                    case OpCode::DivLocalLocal:
+                    case OpCode::ModLocalLocal:
+                    case OpCode::BitAndLocalLocal:
+                    case OpCode::BitOrLocalLocal:
+                    case OpCode::BitXorLocalLocal:
+                    case OpCode::ShlLocalLocal:
+                    case OpCode::ShrLocalLocal:
                     case OpCode::JumpIfLocalGeConst:
+                    case OpCode::JumpIfLocalGtConst:
+                    case OpCode::JumpIfLocalLeConst:
+                    case OpCode::JumpIfLocalLtConst:
+                    case OpCode::JumpIfLocalEqConst:
+                    case OpCode::JumpIfLocalNeConst:
+                    case OpCode::JumpIfLocalGeLocal:
+                    case OpCode::JumpIfLocalGtLocal:
+                    case OpCode::JumpIfLocalLeLocal:
+                    case OpCode::JumpIfLocalLtLocal:
+                    case OpCode::JumpIfLocalEqLocal:
+                    case OpCode::JumpIfLocalNeLocal:
                     case OpCode::Add:
                     case OpCode::Sub:
                     case OpCode::Mul:
@@ -69,6 +98,104 @@ namespace hgl::devil
                 }
             }
 
+            return true;
+        }
+
+        bool ComputeFastFloat(BytecodeFunction &func)
+        {
+            func.const_floats.clear();
+            bool has_double=false;
+
+            for(const AstValue &value:func.constants)
+            {
+                switch(value.type)
+                {
+                    case TokenType::Bool:
+                    case TokenType::Int:
+                    case TokenType::Int8:
+                    case TokenType::Int16:
+                    case TokenType::UInt:
+                    case TokenType::UInt8:
+                    case TokenType::UInt16:
+                    case TokenType::Float:
+                    case TokenType::Double:
+                        func.const_floats.push_back(value.ToDouble());
+                        if(value.type==TokenType::Double)
+                            has_double=true;
+                        break;
+                    default:
+                        return false;
+                }
+            }
+
+            for(const Instruction &ins:func.code)
+            {
+                switch(ins.op)
+                {
+                    case OpCode::Nop:
+                    case OpCode::PushConst:
+                    case OpCode::Pop:
+                    case OpCode::LoadLocal:
+                    case OpCode::StoreLocal:
+                    case OpCode::AddLocalConst:
+                    case OpCode::SubLocalConst:
+                    case OpCode::MulLocalConst:
+                    case OpCode::DivLocalConst:
+                    case OpCode::ModLocalConst:
+                    case OpCode::AddLocalLocal:
+                    case OpCode::SubLocalLocal:
+                    case OpCode::MulLocalLocal:
+                    case OpCode::DivLocalLocal:
+                    case OpCode::ModLocalLocal:
+                    case OpCode::JumpIfLocalGeConst:
+                    case OpCode::JumpIfLocalGtConst:
+                    case OpCode::JumpIfLocalLeConst:
+                    case OpCode::JumpIfLocalLtConst:
+                    case OpCode::JumpIfLocalEqConst:
+                    case OpCode::JumpIfLocalNeConst:
+                    case OpCode::JumpIfLocalGeLocal:
+                    case OpCode::JumpIfLocalGtLocal:
+                    case OpCode::JumpIfLocalLeLocal:
+                    case OpCode::JumpIfLocalLtLocal:
+                    case OpCode::JumpIfLocalEqLocal:
+                    case OpCode::JumpIfLocalNeLocal:
+                    case OpCode::Add:
+                    case OpCode::Sub:
+                    case OpCode::Mul:
+                    case OpCode::Div:
+                    case OpCode::Mod:
+                    case OpCode::Neg:
+                    case OpCode::Not:
+                    case OpCode::Eq:
+                    case OpCode::Ne:
+                    case OpCode::Lt:
+                    case OpCode::Le:
+                    case OpCode::Gt:
+                    case OpCode::Ge:
+                    case OpCode::And:
+                    case OpCode::Or:
+                    case OpCode::Jump:
+                    case OpCode::JumpIfFalse:
+                    case OpCode::Ret:
+                        break;
+                    case OpCode::Cast:
+                    {
+                        const TokenType target=static_cast<TokenType>(ins.a);
+                        if(target==TokenType::Double)
+                        {
+                            has_double=true;
+                            break;
+                        }
+                        if(target!=TokenType::Bool && target!=TokenType::Float)
+                            return false;
+                        break;
+                    }
+                    default:
+                        return false;
+                }
+            }
+
+            func.fast_double=has_double;
             return true;
         }
         void WriteBytes(std::vector<uint8_t> &out,const void *data,size_t size)
@@ -142,6 +269,12 @@ namespace hgl::devil
                     WriteBytes(out,&v,sizeof(v));
                     return true;
                 }
+                case TokenType::Double:
+                {
+                    const double v=value.ToDouble();
+                    WriteBytes(out,&v,sizeof(v));
+                    return true;
+                }
                 case TokenType::String:
                 {
                     return WriteString(out,value.ToString());
@@ -196,6 +329,14 @@ namespace hgl::devil
                     if(!ReadBytes(data,offset,&v,sizeof(v)))
                         return false;
                     out_value=AstValue::MakeFloat(v);
+                    return true;
+                }
+                case TokenType::Double:
+                {
+                    double v=0.0;
+                    if(!ReadBytes(data,offset,&v,sizeof(v)))
+                        return false;
+                    out_value=AstValue::MakeDouble(v);
                     return true;
                 }
                 case TokenType::String:
@@ -316,6 +457,7 @@ namespace hgl::devil
             }
 
             func.fast_int=ComputeFastInt(func);
+            func.fast_float=ComputeFastFloat(func);
             functions.emplace(func.name,std::move(func));
         }
 

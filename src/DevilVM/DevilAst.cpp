@@ -23,6 +23,7 @@ namespace hgl::devil
                 case TokenType::UInt8:  return AstValue::MakeUInt(0);
                 case TokenType::UInt16: return AstValue::MakeUInt(0);
                 case TokenType::Float:  return AstValue::MakeFloat(0.0f);
+                case TokenType::Double: return AstValue::MakeDouble(0.0);
                 case TokenType::String: return AstValue::MakeString(std::string());
                 case TokenType::Void:   return AstValue::MakeVoid();
                 default:                 return AstValue::MakeVoid();
@@ -41,6 +42,7 @@ namespace hgl::devil
                 case TokenType::UInt8:
                 case TokenType::UInt16: return AstValue::MakeUInt(value.ToUInt());
                 case TokenType::Float:  return AstValue::MakeFloat(value.ToFloat());
+                case TokenType::Double: return AstValue::MakeDouble(value.ToDouble());
                 case TokenType::String: return AstValue::MakeString(value.ToString());
                 default:                 return AstValue::MakeVoid();
             }
@@ -65,6 +67,9 @@ namespace hgl::devil
                     return true;
                 case TokenType::Float:
                     out_param.f=value.ToFloat();
+                    return true;
+                case TokenType::Double:
+                    out_param.d=value.ToDouble();
                     return true;
                 case TokenType::String:
                 {
@@ -164,7 +169,7 @@ namespace hgl::devil
                 return lhs.ToString()==rhs.ToString();
 
             if(lhs.IsNumeric() && rhs.IsNumeric())
-                return lhs.ToFloat()==rhs.ToFloat();
+                return lhs.ToDouble()==rhs.ToDouble();
 
             return lhs.ToString()==rhs.ToString();
         }
@@ -175,12 +180,14 @@ namespace hgl::devil
     AstValue AstValue::MakeInt(int32_t v){AstValue r; r.type=TokenType::Int; r.data.i=v; return r;}
     AstValue AstValue::MakeUInt(uint32_t v){AstValue r; r.type=TokenType::UInt; r.data.u=v; return r;}
     AstValue AstValue::MakeFloat(float v){AstValue r; r.type=TokenType::Float; r.data.f=v; return r;}
+    AstValue AstValue::MakeDouble(double v){AstValue r; r.type=TokenType::Double; r.data.d=v; return r;}
     AstValue AstValue::MakeString(std::string v){AstValue r; r.type=TokenType::String; r.s=std::move(v); return r;}
 
     bool AstValue::IsNumeric() const
     {
         return type==TokenType::Bool || type==TokenType::Int || type==TokenType::UInt || type==TokenType::Float
-            || type==TokenType::Int8 || type==TokenType::Int16 || type==TokenType::UInt8 || type==TokenType::UInt16;
+            || type==TokenType::Double || type==TokenType::Int8 || type==TokenType::Int16
+            || type==TokenType::UInt8 || type==TokenType::UInt16;
     }
 
     bool AstValue::ToBool() const
@@ -193,6 +200,8 @@ namespace hgl::devil
             return data.u!=0u;
         if(type==TokenType::Float)
             return std::fabs(data.f)>0.000001f;
+        if(type==TokenType::Double)
+            return std::fabs(data.d)>0.0000001;
         return false;
     }
 
@@ -206,6 +215,8 @@ namespace hgl::devil
             return static_cast<int32_t>(data.u);
         if(type==TokenType::Float)
             return static_cast<int32_t>(data.f);
+        if(type==TokenType::Double)
+            return static_cast<int32_t>(data.d);
         return 0;
     }
 
@@ -219,6 +230,8 @@ namespace hgl::devil
             return data.u;
         if(type==TokenType::Float)
             return static_cast<uint32_t>(data.f);
+        if(type==TokenType::Double)
+            return static_cast<uint32_t>(data.d);
         return 0u;
     }
 
@@ -232,7 +245,24 @@ namespace hgl::devil
             return static_cast<float>(data.u);
         if(type==TokenType::Float)
             return data.f;
+        if(type==TokenType::Double)
+            return static_cast<float>(data.d);
         return 0.0f;
+    }
+
+    double AstValue::ToDouble() const
+    {
+        if(type==TokenType::Bool)
+            return data.b?1.0:0.0;
+        if(type==TokenType::Int || type==TokenType::Int8 || type==TokenType::Int16)
+            return static_cast<double>(data.i);
+        if(type==TokenType::UInt || type==TokenType::UInt8 || type==TokenType::UInt16)
+            return static_cast<double>(data.u);
+        if(type==TokenType::Float)
+            return static_cast<double>(data.f);
+        if(type==TokenType::Double)
+            return data.d;
+        return 0.0;
     }
 
     std::string AstValue::ToString() const
@@ -247,6 +277,8 @@ namespace hgl::devil
             return std::to_string(data.u);
         if(type==TokenType::Float)
             return std::to_string(data.f);
+        if(type==TokenType::Double)
+            return std::to_string(data.d);
         return std::string();
     }
 
@@ -282,6 +314,8 @@ namespace hgl::devil
                     ctx.error="unary '-' expects numeric";
                     return AstValue::MakeVoid();
                 }
+                if(val.type==TokenType::Double)
+                    return AstValue::MakeDouble(-val.ToDouble());
                 return AstValue::MakeFloat(-val.ToFloat());
             case TokenType::Plus:
                 return val;
@@ -306,22 +340,38 @@ namespace hgl::devil
         {
             case TokenType::Plus:
                 if(lhs.IsNumeric() && rhs.IsNumeric())
+                {
+                    if(lhs.type==TokenType::Double || rhs.type==TokenType::Double)
+                        return AstValue::MakeDouble(lhs.ToDouble()+rhs.ToDouble());
                     return AstValue::MakeFloat(lhs.ToFloat()+rhs.ToFloat());
+                }
                 ctx.error="'+' expects numeric";
                 return AstValue::MakeVoid();
             case TokenType::Minus:
                 if(lhs.IsNumeric() && rhs.IsNumeric())
+                {
+                    if(lhs.type==TokenType::Double || rhs.type==TokenType::Double)
+                        return AstValue::MakeDouble(lhs.ToDouble()-rhs.ToDouble());
                     return AstValue::MakeFloat(lhs.ToFloat()-rhs.ToFloat());
+                }
                 ctx.error="'-' expects numeric";
                 return AstValue::MakeVoid();
             case TokenType::Star:
                 if(lhs.IsNumeric() && rhs.IsNumeric())
+                {
+                    if(lhs.type==TokenType::Double || rhs.type==TokenType::Double)
+                        return AstValue::MakeDouble(lhs.ToDouble()*rhs.ToDouble());
                     return AstValue::MakeFloat(lhs.ToFloat()*rhs.ToFloat());
+                }
                 ctx.error="'*' expects numeric";
                 return AstValue::MakeVoid();
             case TokenType::Slash:
                 if(lhs.IsNumeric() && rhs.IsNumeric())
+                {
+                    if(lhs.type==TokenType::Double || rhs.type==TokenType::Double)
+                        return AstValue::MakeDouble(lhs.ToDouble()/rhs.ToDouble());
                     return AstValue::MakeFloat(lhs.ToFloat()/rhs.ToFloat());
+                }
                 ctx.error="'/' expects numeric";
                 return AstValue::MakeVoid();
             case TokenType::Percent:
@@ -331,20 +381,20 @@ namespace hgl::devil
                 return AstValue::MakeVoid();
             case TokenType::Equal:
                 if(lhs.IsNumeric() && rhs.IsNumeric())
-                    return AstValue::MakeBool(lhs.ToFloat()==rhs.ToFloat());
+                    return AstValue::MakeBool(lhs.ToDouble()==rhs.ToDouble());
                 return AstValue::MakeBool(lhs.ToString()==rhs.ToString());
             case TokenType::NotEqual:
                 if(lhs.IsNumeric() && rhs.IsNumeric())
-                    return AstValue::MakeBool(lhs.ToFloat()!=rhs.ToFloat());
+                    return AstValue::MakeBool(lhs.ToDouble()!=rhs.ToDouble());
                 return AstValue::MakeBool(lhs.ToString()!=rhs.ToString());
             case TokenType::LessThan:
-                return AstValue::MakeBool(lhs.ToFloat()<rhs.ToFloat());
+                return AstValue::MakeBool(lhs.ToDouble()<rhs.ToDouble());
             case TokenType::GreaterThan:
-                return AstValue::MakeBool(lhs.ToFloat()>rhs.ToFloat());
+                return AstValue::MakeBool(lhs.ToDouble()>rhs.ToDouble());
             case TokenType::LessThanOrEqual:
-                return AstValue::MakeBool(lhs.ToFloat()<=rhs.ToFloat());
+                return AstValue::MakeBool(lhs.ToDouble()<=rhs.ToDouble());
             case TokenType::GreaterThanOrEqual:
-                return AstValue::MakeBool(lhs.ToFloat()>=rhs.ToFloat());
+                return AstValue::MakeBool(lhs.ToDouble()>=rhs.ToDouble());
             case TokenType::And:
                 return AstValue::MakeBool(lhs.ToBool() && rhs.ToBool());
             case TokenType::Or:

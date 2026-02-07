@@ -26,6 +26,9 @@ namespace hgl::devil
                 case TokenType::Float:
                     out_param.f=value.ToFloat();
                     return true;
+                case TokenType::Double:
+                    out_param.d=value.ToDouble();
+                    return true;
                 case TokenType::String:
                 {
                     std::string str=value.ToString();
@@ -101,6 +104,14 @@ namespace hgl::devil
             float ret=0.0f;
             map->Call(params.data(),param_size,&ret);
             out_value=AstValue::MakeFloat(ret);
+            return true;
+        }
+
+        if(map->result==TokenType::Double)
+        {
+            double ret=0.0;
+            map->Call(params.data(),param_size,&ret);
+            out_value=AstValue::MakeDouble(ret);
             return true;
         }
 
