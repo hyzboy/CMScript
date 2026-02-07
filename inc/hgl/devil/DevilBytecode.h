@@ -75,6 +75,9 @@ namespace hgl::devil
         BytecodeFunction *GetFunction(const std::string &name);
         void Clear();
         const ankerl::unordered_dense::map<std::string,BytecodeFunction> &GetFunctions() const{return functions;}
+
+        bool Serialize(std::vector<uint8_t> &out_data) const;
+        bool Deserialize(const std::vector<uint8_t> &data);
     };
 
     struct Frame
@@ -89,6 +92,7 @@ namespace hgl::devil
         BytecodeModule *module=nullptr;
         std::vector<AstValue> value_stack;
         std::vector<Frame> callstack;
+        std::vector<AstValue> arg_buffer;
         AstValue last_result=AstValue::MakeVoid();
         std::string error;
 

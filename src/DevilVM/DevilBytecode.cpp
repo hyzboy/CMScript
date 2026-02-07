@@ -158,12 +158,18 @@ namespace hgl::devil
         last_result=AstValue::MakeVoid();
         value_stack.clear();
         callstack.clear();
+        arg_buffer.clear();
 
         if(static_cast<int32_t>(args.size())!=func.param_count)
         {
             error="bytecode param count mismatch";
             return false;
         }
+
+        const size_t reserve_size=static_cast<size_t>(func.local_count)+args.size()+16;
+        value_stack.reserve(reserve_size);
+        callstack.reserve(16);
+        arg_buffer.reserve(8);
 
         const size_t base=value_stack.size();
         for(const AstValue &v:args)
@@ -477,11 +483,11 @@ namespace hgl::devil
                     return false;
                 }
 
-                std::vector<AstValue> args(static_cast<size_t>(argc));
+                arg_buffer.resize(static_cast<size_t>(argc));
                 for(int i=argc-1;i>=0;--i)
                 {
                     bool ok=false;
-                    args[static_cast<size_t>(i)]=PopValue(value_stack,ok);
+                    arg_buffer[static_cast<size_t>(i)]=PopValue(value_stack,ok);
                     if(!ok)
                     {
                         error="bytecode call native arg underflow";
@@ -490,7 +496,7 @@ namespace hgl::devil
                 }
 
                 AstValue out;
-                if(!CallNativeFunc(map,args,*module->GetHostModule(),out))
+                if(!CallNativeFunc(map,arg_buffer,*module->GetHostModule(),out))
                 {
                     error="bytecode call native failed: "+name;
                     return false;
@@ -532,6 +538,7 @@ namespace hgl::devil
                 if(callee->local_count>callee->param_count)
                 {
                     const size_t extra=static_cast<size_t>(callee->local_count-callee->param_count);
+                    value_stack.reserve(value_stack.size()+extra+8);
                     for(size_t i=0;i<extra;++i)
                         value_stack.push_back(AstValue::MakeVoid());
                 }

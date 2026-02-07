@@ -18,3 +18,6 @@ cm_example_project("" HelloWorld hello_devilvm.cpp)
 cm_example_project("" GotoTest goto_devilvm.cpp)
 
 cm_example_project("" BytecodeTests DevilBytecodeTests.cpp)
+cm_example_project("" BytecodePerf DevilBytecodePerf.cpp)
+
+cm_example_project("" SyntaxTests DevilSyntaxTests.cpp)

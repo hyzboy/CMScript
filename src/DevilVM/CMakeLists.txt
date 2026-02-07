@@ -53,6 +53,7 @@ set(DEVIL_VM_CORE_FILES
 set(DEVIL_VM_BYTECODE_FILES
 	${CMAKE_CURRENT_SOURCE_DIR}/DevilBytecode.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/DevilBytecodeBuilder.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/DevilBytecodeSerialize.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/DevilBytecodeNative.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/DevilBytecodeDisasm.cpp
 )
