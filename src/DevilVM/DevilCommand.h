@@ -19,27 +19,31 @@ namespace hgl::devil
 
     union SystemFuncParam          //函数参数
     {
-        void *  void_pointer;
+        void *          void_pointer;
 
-        char    c;
-        char *  str;
-        char    wc;
-        char *  wide_str;
-        int     i;
-        int *   int_pointer;
-        uint    u;
-        uint *  uint_pointer;
-        float   f;
-        float * float_pointer;
+        char            c;
+        char *          str;
+        wchar_t         wc;
+        wchar_t *       wide_str;
+        u8char          u8c;
+        u8char *        u8str;
+        u16char         u16c;
+        u16char *       u16str;
+        u32char         u32c;
+        u32char *       u32str;
+        int             i;
+        int *           int_pointer;
+        uint            u;
+        uint *          uint_pointer;
+        float           f;
+        float *         float_pointer;
 
-    #if HGL_CPU == HGL_CPU_X86_64
-        double  d;
-        double *double_pointer;
-        uint64  ui64;
-        int64   si64;
-        uint64 *u64_pointer;
-        int64 * i64_pointer;
-    #endif//HGL_CPU == HGL_CPU_X86_64
+        double          d;
+        double *        double_pointer;
+        uint64          ui64;
+        int64           si64;
+        uint64 *        u64_pointer;
+        int64 *         i64_pointer;
 
         ValueInterface *value;     //变量
     };//union SystemFuncParam

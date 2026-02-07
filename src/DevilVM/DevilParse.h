@@ -30,18 +30,18 @@ namespace hgl::devil
         template<typename T>
         bool                    ParseNumber(T &,const std::string &);
 
-        ValueInterface *   ParseValue();                                                       //解析一个量(属性/数值/真实函数调用)
+        ValueInterface *        ParseValue();                                                       //解析一个量(属性/数值/真实函数调用)
         void                    ParseValue(Func *,eTokenType,std::string &);
         void                    ParseEnum();
 
         #ifdef _DEBUG
-        Command *          ParseFuncCall(std::string &,FuncMap *,std::string &);
+        Command *               ParseFuncCall(std::string &,FuncMap *,std::string &);
         #else
-        Command *          ParseFuncCall(FuncMap *);
+        Command *               ParseFuncCall(FuncMap *);
         #endif//
         bool                    ParseIf(Func *);
 
-        CompInterface *    ParseComp();
+        CompInterface *         ParseComp();
         eTokenType              ParseCompType();
 
     public:
