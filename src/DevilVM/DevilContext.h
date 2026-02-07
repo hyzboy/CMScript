@@ -12,6 +12,11 @@ namespace hgl
         DevilFunc *func;    //函数指针
 
         int index;          //运行到的指令编号
+
+        bool operator==(const ScriptFuncRunState &other) const
+        {
+            return func == other.func && index == other.index;
+        }
     };//struct ScriptFuncRunState
 
     class DevilScriptContext:public DevilContext
