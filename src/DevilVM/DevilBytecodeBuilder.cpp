@@ -557,7 +557,16 @@ namespace hgl::devil
             const auto it=labels.find(p.label);
             if(it==labels.end())
             {
-                error="bytecode label not found: "+p.label;
+                std::string label_list;
+                label_list.reserve(labels.size()*8);
+                for(const auto &kv:labels)
+                {
+                    if(!label_list.empty())
+                        label_list.append(",");
+                    label_list.append(kv.first);
+                }
+
+                error="bytecode label not found: "+p.label+" (known: "+label_list+")";
                 return false;
             }
             out_func.code[p.index].a=static_cast<int32_t>(it->second);

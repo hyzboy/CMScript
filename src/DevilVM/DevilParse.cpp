@@ -640,9 +640,10 @@ namespace hgl::devil
         if(type==TokenType::Goto)
         {
             GetToken(name);
-            GetToken(name);
+            std::string label;
+            GetToken(label);
             GetToken(TokenType::EndStatement,name);
-            return std::make_unique<GotoStmt>(name);
+            return std::make_unique<GotoStmt>(label);
         }
 
         if(type==TokenType::Break)
