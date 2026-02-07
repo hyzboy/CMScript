@@ -69,88 +69,6 @@ namespace devil
         }
     }
 
-    bool Module::_MapFunc(const char *intro,void *this_pointer,void *func_pointer)
-    {
-        Parse parse(this,intro);
-        eTokenType type;
-        FuncMap *dfm;
-
-        std::string name,func_name;
-
-        type=parse.GetToken(name);                      //取得函数返回类型
-
-        parse.GetToken(func_name);                      //取得函数名称
-
-        if(func_map.find(func_name)!=func_map.end())    //在已有记录找到同名的映射
-        {
-            LogError("%s",
-                     ("repeat func name:"+std::string(intro)).c_str());
-            return(false);
-        }
-//      else DebugLog(u"映射函数<%s>",intro);
-
-        #ifdef _DEBUG
-            std::string func_intro;
-
-            func_intro=std::string(GetTokenName(type)) + " " + func_name + "(";
-                //.Sprintf(u"%8s %s(",GetTokenName(type),func_name.wc_str());
-        #endif//
-
-        dfm=new FuncMap;
-
-        dfm->base   =this_pointer;
-        dfm->func   =func_pointer;
-        dfm->result =type;
-
-        parse.GetToken(ttOpenParanthesis,name);     //找到左括号为止
-
-        while(true)
-        {
-            type=parse.GetToken(name);
-
-            switch(type)
-            {
-                case ttCloseParanthesis:func_map.emplace(func_name,dfm);    //找到右括号
-                                        #ifdef _DEBUG
-                                                func_intro.push_back(')');
-
-                                                LogInfo("%s",
-                                                    ("映射函数成功，参数"
-                                                     +std::to_string(static_cast<int>(dfm->param.size()))
-                                                     +"个:"+func_intro).c_str());
-                                        #endif//_DEBUG
-                                        return(true);
-                case ttBool:
-
-                case ttInt:
-                case ttInt8:
-                case ttInt16:
-//              case ttInt64:
-                case ttUInt:
-                case ttUInt8:
-                case ttUInt16:
-//              case ttUInt64:
-
-                case ttFloat:
-//              case ttDouble:
-
-                case ttString:
-                                        #ifdef _DEBUG
-                                            if(!dfm->param.empty())
-                                                func_intro.push_back(',');
-
-                                            func_intro+=GetTokenName(type);
-                                        #endif//_DEBUG
-
-                                        dfm->param.push_back(type);         //增加一个参数类型项
-                                        break;
-
-                case ttEnd:             delete dfm;
-                                        return(false);
-            }
-        }
-    }
-
     bool Module::_MapFuncTyped(const char *name,void *this_pointer,void *func_pointer,detail::BindType result,std::initializer_list<detail::BindType> params)
     {
         if(!name||!(*name))
@@ -197,41 +115,6 @@ namespace devil
         #endif//_DEBUG
 
         return(true);
-    }
-
-    /**
-    * 映射一个C函数
-    * @param intro 函数描述，如“int getvalue(int,string)”，注意不可以写成“int getvalue(int index,string value)”
-    * @param func_pointer 函数指针
-    * @return 是否映射成功
-    */
-    bool Module::MapFunc(const char *intro,void *func_pointer)
-    {
-        return _MapFunc(intro,nullptr,func_pointer);
-    }
-
-    ///**
-    //* 映射一个C函数，并传入一个数据
-    //* @param data 传入的数据
-    //* @param intro 函数描述，如“int getvalue(int,string)”，注意不可以写成“int getvalue(int index,string value)”
-    //* @param func_pointer 函数指针
-    //* @return 是否映射成功
-    //*/
-    //bool Module::MapFunc(void *data,const char *intro,void *func_pointer)
-    //{
-    //  return _MapFunc(FuncMap::fcmFirstObject,   intro,data,func_pointer);
-    //}
-
-    /**
-    * 映射一个C++成员函数
-    * @param intro 函数描述，如“int getvalue(int,string)”，注意不可以写成“int getvalue(int index,string value)”
-    * @param this_pointer 对象指针
-    * @param func_pointer 函数指针
-    * @return 是否映射成功
-    */
-    bool Module::MapFunc(const char *intro,void *this_pointer,void *func_pointer)
-    {
-        return _MapFunc(intro,this_pointer,func_pointer);
     }
 
     Func *Module::GetScriptFunc(const std::string &name)

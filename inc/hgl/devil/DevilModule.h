@@ -77,7 +77,6 @@ namespace hgl::devil
 
     private:
 
-        bool _MapFunc(const char *,void *,void *);
         bool _MapFuncTyped(const char *,void *,void *,detail::BindType,std::initializer_list<detail::BindType>);
 
     public: //事件
@@ -98,10 +97,6 @@ namespace hgl::devil
         PropertyMap *GetPropertyMap(const std::string &);
 
         virtual bool MapProperty(const char *,void *);                         ///<映射属性(真实变量的映射，在整个模块中全局有效)
-        virtual bool MapFunc(const char *,void *);                             ///<映射C函数
-    //      virtual bool MapFunc(void *,const char *,void *);                      ///<映射C函数,并传入一个对像
-        virtual bool MapFunc(const char *,void *,void *);                      ///<映射C++成员函数
-
         template<typename R,typename... Args>
         bool MapFunc(const char *name,R (*func)(Args...))
         {
