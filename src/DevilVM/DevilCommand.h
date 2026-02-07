@@ -8,8 +8,8 @@
 using namespace angle_script;
 namespace hgl
 {
-    class DevilScriptModule;
-    class DevilScriptContext;
+    class DevilModule;
+    class DevilContext;
     class DevilFunc;
     class DevilValueInterface;
     template<typename T> class DevilValueProperty;
@@ -75,7 +75,7 @@ namespace hgl
         DevilCommand()=default;
         virtual ~DevilCommand()=default;
 
-        virtual bool Run(DevilScriptContext *)=0;
+        virtual bool Run(DevilContext *)=0;
     };
 
     template<typename T> class DevilFuncCall:public DevilCommand                                    //函数呼叫
@@ -88,7 +88,7 @@ namespace hgl
 
         virtual ~DevilFuncCall()=default;
 
-        virtual bool Run(DevilScriptContext *)=0;
+        virtual bool Run(DevilContext *)=0;
     };
 
 //--------------------------------------------------------------------------------------------------
@@ -96,7 +96,7 @@ namespace hgl
     {
     protected:
 
-        DevilScriptModule *module;
+        DevilModule *module;
 
     public:
 
@@ -104,7 +104,7 @@ namespace hgl
 
     public:
 
-        DevilValueInterface(DevilScriptModule *dm,eTokenType tt)
+        DevilValueInterface(DevilModule *dm,eTokenType tt)
         {
             module=dm;
             type=tt;
@@ -188,7 +188,7 @@ namespace hgl
                                             \
                                         public: \
                                         \
-                                            name(DevilScriptModule *dm,const u16char *str):DevilValue<T>(dm,tt) \
+                                            name(DevilModule *dm,const u16char *str):DevilValue<T>(dm,tt) \
                                             {   \
                                                 proc(str,value);    \
                                             }   \
@@ -210,7 +210,7 @@ namespace hgl
 
     public:
 
-        DevilValueProperty(DevilScriptModule *dm,DevilPropertyMap *dpm,eTokenType type):DevilValue<T>(dm,type)
+        DevilValueProperty(DevilModule *dm,DevilPropertyMap *dpm,eTokenType type):DevilValue<T>(dm,type)
         {
             address=(T *)(dpm->address);
         }
@@ -227,7 +227,7 @@ namespace hgl
 
     public:
 
-        DevilValueFuncMap(DevilScriptModule *dm,DevilCommand *dfc,eTokenType type):DevilValue<T>(dm,type)
+        DevilValueFuncMap(DevilModule *dm,DevilCommand *dfc,eTokenType type):DevilValue<T>(dm,type)
         {
             cmd=dfc;
         }
@@ -260,7 +260,7 @@ namespace hgl
             value_name=U16_TEXT("null");
         }
 
-        DevilScriptValue(DevilScriptModule *dm,const U16String &fn,const U16String &vn,eTokenType tt):DevilValue<T>(dm,tt)
+        DevilScriptValue(DevilModule *dm,const U16String &fn,const U16String &vn,eTokenType tt):DevilValue<T>(dm,tt)
         {
             func_name=fn;
             value_name=vn;
@@ -283,7 +283,7 @@ namespace hgl
 
         virtual ~DevilSystemFuncCall()=default;
 
-        virtual bool Run(DevilScriptContext *)=0;
+        virtual bool Run(DevilContext *)=0;
     };
 
     template<typename T> class DevilSystemFuncCallFixed:public DevilFuncCall<T>                     //固定参数的真实函数呼叫
@@ -308,7 +308,7 @@ namespace hgl
             delete[] param;
         }
 
-        bool Run(DevilScriptContext *) override
+        bool Run(DevilContext *) override
         {
             return func->Call(param,param_size,&(this->result));
         }
@@ -326,26 +326,26 @@ namespace hgl
         DevilSystemFuncCallDynamic(DevilFuncMap *);
         ~DevilSystemFuncCallDynamic();
 
-        bool Run(DevilScriptContext *) override;
+        bool Run(DevilContext *) override;
     };
 
     class DevilScriptFuncCall:public DevilFuncCall<void *>                                          //脚本函数呼叫
     {
-        DevilScriptModule *module;
+        DevilModule *module;
         DevilFunc *func;
 
     public:
 
-        DevilScriptFuncCall(DevilScriptModule *,DevilFunc *);
+        DevilScriptFuncCall(DevilModule *,DevilFunc *);
 
-        bool Run(DevilScriptContext *) override;
+        bool Run(DevilContext *) override;
     };
 
     class DevilGoto:public DevilCommand                                                             //跳转
     {
         OBJECT_LOGGER
 
-        DevilScriptModule *module;
+        DevilModule *module;
         DevilFunc *func;
         U16String name;
 
@@ -353,18 +353,18 @@ namespace hgl
 
     public:
 
-        DevilGoto(DevilScriptModule *,DevilFunc *,const U16String &);
+        DevilGoto(DevilModule *,DevilFunc *,const U16String &);
 
         void UpdateGotoFlag();
 
-        bool Run(DevilScriptContext *) override;
+        bool Run(DevilContext *) override;
     };
 
     class DevilCompGoto:public DevilCommand                                                         //比较并跳转
     {
         OBJECT_LOGGER
 
-        DevilScriptModule *module;
+        DevilModule *module;
         DevilCompInterface *comp;
         DevilFunc *func;
 
@@ -376,40 +376,40 @@ namespace hgl
 
     public:
 
-        DevilCompGoto(DevilScriptModule *,DevilCompInterface *dci,DevilFunc *);
+        DevilCompGoto(DevilModule *,DevilCompInterface *dci,DevilFunc *);
         ~DevilCompGoto();
 
         void UpdateGotoFlag();
 
-        bool Run(DevilScriptContext *) override;
+        bool Run(DevilContext *) override;
     };
 
     class DevilReturn:public DevilCommand                                                           //函数返回
     {
-        DevilScriptModule *module;
+        DevilModule *module;
 
     public:
 
-        DevilReturn(DevilScriptModule *);
+        DevilReturn(DevilModule *);
 
-        bool Run(DevilScriptContext *) override;
+        bool Run(DevilContext *) override;
     };
 
     class DevilSystemValueEqu:public DevilCommand                                                   //真实变量赋值
     {
     public:
 
-        DevilSystemValueEqu(DevilScriptModule *);
+        DevilSystemValueEqu(DevilModule *);
 
-        bool Run(DevilScriptContext *) override;
+        bool Run(DevilContext *) override;
     };
 
     class DevilScriptValueEqu:public DevilCommand                                                   //脚本变量赋值
     {
     public:
 
-        DevilScriptValueEqu(DevilScriptModule *);
+        DevilScriptValueEqu(DevilModule *);
 
-        bool Run(DevilScriptContext *) override;
+        bool Run(DevilContext *) override;
     };
 }//namespace hgl

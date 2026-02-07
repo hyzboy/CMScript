@@ -65,7 +65,7 @@ namespace hgl
 
 namespace hgl
 {
-    DevilParse::DevilParse(DevilScriptModule *dm,const u16char *str,int len)
+    DevilParse::DevilParse(DevilModule *dm,const u16char *str,int len)
     {
         module=dm;
 

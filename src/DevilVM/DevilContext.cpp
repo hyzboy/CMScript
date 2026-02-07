@@ -1,14 +1,16 @@
 ﻿#include"DevilContext.h"
 #include"DevilModule.h"
+#include"DevilCommand.h"
+#include"DevilFunc.h"
 
 namespace hgl
 {
-    void DevilScriptContext::ClearStack()
+    void DevilContext::ClearStack()
     {
         run_state.Clear();
     }
 
-    bool DevilScriptContext::RunContext()
+    bool DevilContext::RunContext()
     {
         while(true)
         {
@@ -54,7 +56,7 @@ namespace hgl
         }
     }
 
-    void DevilScriptContext::ScriptFuncCall(DevilFunc *func)
+    void DevilContext::ScriptFuncCall(DevilFunc *func)
     {
         ScriptFuncRunState state;
         state.func=func;
@@ -64,7 +66,7 @@ namespace hgl
         cur_state=&run_state[run_state.GetCount()-1];
     }
 
-    bool DevilScriptContext::Goto(DevilFunc *func,int index)
+    bool DevilContext::Goto(DevilFunc *func,int index)
     {
         if(index<0)
         {
@@ -90,7 +92,7 @@ namespace hgl
         }
     }
 
-    bool DevilScriptContext::Goto(const u16char *func_name,const u16char *flag)
+    bool DevilContext::Goto(const u16char *func_name,const u16char *flag)
     {
         ClearStack();
 
@@ -114,7 +116,7 @@ namespace hgl
         return Goto(flag);
     }
 
-    bool DevilScriptContext::Return()
+    bool DevilContext::Return()
     {
         run_state.Delete(run_state.GetCount()-1);       //删除最后一个，即当前函数
 
@@ -130,7 +132,7 @@ namespace hgl
 
     bool Start(DevilFunc *,const va_list &);
 
-    bool DevilScriptContext::Start(const u16char *func_name)
+    bool DevilContext::Start(const u16char *func_name)
     {
         ClearStack();
 
@@ -154,7 +156,7 @@ namespace hgl
         return RunContext();
     }
 
-    bool DevilScriptContext::Start(DevilFunc *func,...)
+    bool DevilContext::Start(DevilFunc *func,...)
     {
         if(!func)
             return(false);
@@ -166,7 +168,7 @@ namespace hgl
         return RunContext();
     }
 
-    bool DevilScriptContext::StartFlag(const u16char *func_name,const u16char *goto_flag)
+    bool DevilContext::StartFlag(const u16char *func_name,const u16char *goto_flag)
     {
         DevilFunc *func;
 
@@ -180,12 +182,27 @@ namespace hgl
             return(false);
     }
 
-    bool DevilScriptContext::Start(const u16char *func_name,const u16char *goto_flag)
+    bool DevilContext::StartFlag(DevilFunc *func,const u16char *goto_flag)
+    {
+        if(!func)
+            return(false);
+
+        ClearStack();
+        ScriptFuncCall(func);
+        State=dvsRun;
+
+        if(Goto(goto_flag))
+            return RunContext();
+        else
+            return(false);
+    }
+
+    bool DevilContext::Start(const u16char *func_name,const u16char *goto_flag)
     {
         return StartFlag(func_name,goto_flag);
     }
 
-    bool DevilScriptContext::Run(const u16char *func_name)
+    bool DevilContext::Run(const u16char *func_name)
     {
         if(run_state.GetCount()>0)
         {
@@ -221,12 +238,12 @@ namespace hgl
         return RunContext();
     }
 
-    void DevilScriptContext::Pause()
+    void DevilContext::Pause()
     {
         State=dvsPause;
     }
 
-    void DevilScriptContext::Stop()
+    void DevilContext::Stop()
     {
         State=dvsStop;
         ClearStack();
@@ -234,7 +251,7 @@ namespace hgl
         cur_state=nullptr;
     }
 
-    bool DevilScriptContext::Goto(const u16char *flag)
+    bool DevilContext::Goto(const u16char *flag)
     {
         if(!cur_state)
         {
@@ -264,7 +281,7 @@ namespace hgl
         return Goto(cur_state->func,index);
     }
 
-    bool DevilScriptContext::GetCurrentState(U16String &func_name,int &func_line)
+    bool DevilContext::GetCurrentState(U16String &func_name,int &func_line)
     {
         if(!cur_state)return(false);
 
@@ -274,7 +291,7 @@ namespace hgl
         return(true);
     }
 
-    bool DevilScriptContext::SaveState(io::DataOutputStream *p)
+    bool DevilContext::SaveState(io::DataOutputStream *p)
     {
         if(!p->WriteInt32(run_state.GetCount()))return(false);
 
@@ -287,7 +304,7 @@ namespace hgl
         return(true);
     }
 
-    bool DevilScriptContext::LoadState(io::DataInputStream *p)
+    bool DevilContext::LoadState(io::DataInputStream *p)
     {
         ClearStack();
         cur_state=nullptr;

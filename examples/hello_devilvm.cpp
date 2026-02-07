@@ -5,8 +5,7 @@
 
 #include <hgl/type/String.h>
 
-#include "DevilModule.h"
-#include "DevilContext.h"
+#include <hgl/devil/DevilVM.h>
 
 namespace
 {
@@ -26,7 +25,7 @@ namespace
 
 int main()
 {
-    hgl::DevilScriptModule module;
+    hgl::DevilModule module;
 
     if(!module.MapFunc(U16_TEXT("void print(string)"), (void *)(&PrintU16)))
     {
@@ -42,7 +41,7 @@ int main()
         return 1;
     }
 
-    hgl::DevilScriptContext context(&module);
+    hgl::DevilContext context(&module);
 
     if(!context.Start(U16_TEXT("main")))
     {

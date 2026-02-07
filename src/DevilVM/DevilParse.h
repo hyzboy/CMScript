@@ -14,7 +14,7 @@ namespace hgl
     {
         OBJECT_LOGGER
 
-        DevilScriptModule * module;
+        DevilModule * module;
 
         const u16char *     source_start;
 
@@ -46,7 +46,7 @@ namespace hgl
 
     public:
 
-        DevilParse(DevilScriptModule *,const u16char *,int=-1);
+        DevilParse(DevilModule *,const u16char *,int=-1);
 
         eTokenType GetToken(U16String &);     //取得一个token,自动跳过注释、换行、空格
         eTokenType CheckToken(U16String &);   //检测下一个token,自动跳过注释、换行、空格,但不取出

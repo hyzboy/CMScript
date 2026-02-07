@@ -1,22 +1,18 @@
 cmake_minimum_required(VERSION 3.28)
 
-set(EXAMPLE_NAME CMScriptHelloDevil)
+macro(cm_example_project sub_folder project_name)
+    cm_example_project_base(
+        PROJECT_NAME ${project_name}
+        FOLDER_PATH "Examples/CMScript/${sub_folder}"
+        SOURCES ${ARGN}
+        PRIVATE_LIBRARIES   CMScript
+                            CMCore
+                            CMPlatform
+                            CMUtil
+    )
+    # Set C++20 standard for all CMScript examples
+    set_property(TARGET ${project_name} PROPERTY CXX_STANDARD 20)
+endmacro()
 
-add_executable(${EXAMPLE_NAME}
-    hello_devilvm.cpp
-)
-
-target_link_libraries(${EXAMPLE_NAME}
-    PRIVATE
-        CMScript
-        CMCore
-        CMPlatform
-        CMUtil
-)
-
-target_include_directories(${EXAMPLE_NAME}
-    PRIVATE
-        ${CMSCRIPT_ROOT_SOURCE_PATH}/DevilVM
-)
-
-set_property(TARGET ${EXAMPLE_NAME} PROPERTY FOLDER "Examples/CMScript")
+cm_example_project("" DevilVM_Hello hello_devilvm.cpp)
+cm_example_project("" DevilVM_Goto goto_devilvm.cpp)

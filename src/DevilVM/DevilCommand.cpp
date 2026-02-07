@@ -45,7 +45,7 @@ namespace hgl
 //      delete[] param;
 //  }
 //
-//  bool DevilSystemFuncCallDynamic::Run(DevilScriptContext *context)
+//  bool DevilSystemFuncCallDynamic::Run(DevilContext *context)
 //  {
 //
 //  }
@@ -53,13 +53,13 @@ namespace hgl
 
 namespace hgl
 {
-    DevilScriptFuncCall::DevilScriptFuncCall(DevilScriptModule *dm,DevilFunc *df)
+    DevilScriptFuncCall::DevilScriptFuncCall(DevilModule *dm,DevilFunc *df)
     {
         module=dm;
         func=df;
     }
 
-    bool DevilScriptFuncCall::Run(DevilScriptContext *context)
+    bool DevilScriptFuncCall::Run(DevilContext *context)
     {
         context->ScriptFuncCall(func);
 
@@ -69,7 +69,7 @@ namespace hgl
 
 namespace hgl
 {
-    DevilGoto::DevilGoto(DevilScriptModule *dm,DevilFunc *df,const U16String &flag)
+    DevilGoto::DevilGoto(DevilModule *dm,DevilFunc *df,const U16String &flag)
     {
         module=dm;
 
@@ -90,7 +90,7 @@ namespace hgl
                          .c_str());
     }
 
-    bool DevilGoto::Run(DevilScriptContext *context)
+    bool DevilGoto::Run(DevilContext *context)
     {
         #ifdef _DEBUG
             LogInfo(U16_TEXT("%s"),
@@ -104,7 +104,7 @@ namespace hgl
 
 namespace hgl
 {
-    DevilCompGoto::DevilCompGoto(DevilScriptModule *dm,DevilCompInterface *dci,DevilFunc *f)
+    DevilCompGoto::DevilCompGoto(DevilModule *dm,DevilCompInterface *dci,DevilFunc *f)
     {
         module=dm;
         comp=dci;
@@ -127,7 +127,7 @@ namespace hgl
                      (U16_TEXT("在函数<")+func->func_name+U16_TEXT(">没有找到跳转标识:")+else_flag).c_str());
     }
 
-    bool DevilCompGoto::Run(DevilScriptContext *context)
+    bool DevilCompGoto::Run(DevilContext *context)
     {
         if(comp->Comp())return(true);
 
@@ -140,12 +140,12 @@ namespace hgl
 
 namespace hgl
 {
-    DevilReturn::DevilReturn(DevilScriptModule *dm)
+    DevilReturn::DevilReturn(DevilModule *dm)
     {
         module=dm;
     }
 
-    bool DevilReturn::Run(DevilScriptContext *context)
+    bool DevilReturn::Run(DevilContext *context)
     {
         return context->Return();
     }

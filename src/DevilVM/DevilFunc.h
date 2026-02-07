@@ -8,7 +8,7 @@
 
 namespace hgl
 {
-    class DevilScriptModule;
+    class DevilModule;
 
     /**
     * 虚拟机内脚本函数定义
@@ -17,7 +17,7 @@ namespace hgl
     {
         OBJECT_LOGGER
 
-        DevilScriptModule *module;
+        DevilModule *module;
 
     public:
 
@@ -31,7 +31,7 @@ namespace hgl
 
     public:
 
-        DevilFunc(DevilScriptModule *dvm,const U16String &name){module=dvm;func_name=name;}
+        DevilFunc(DevilModule *dvm,const U16String &name){module=dvm;func_name=name;}
 
         bool AddGotoFlag(const U16String &);      //增加跳转旗标
         int FindGotoFlag(const U16String &);      //查找跳转旗标
