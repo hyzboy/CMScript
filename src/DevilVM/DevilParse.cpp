@@ -1,5 +1,6 @@
 ﻿#include"DevilParse.h"
 #include"DevilModule.h"
+#include <memory>
 
 namespace hgl::devil
 {
@@ -195,9 +196,9 @@ namespace hgl::devil
         if(!ParseCode(func))
             return(false);
 
-        for(int i=0;i<func->command.GetCount();i++)
+        for(int i=0;i<static_cast<int>(func->command.size());i++)
         {
-            Command *cmd=func->command[i];
+            Command *cmd=func->command[i].get();
             if(!cmd)
                 continue;
 
@@ -604,14 +605,18 @@ namespace hgl::devil
         CompInterface *dci;
         CompGoto *dcg;
 
-        flag=func->func_name+U16_TEXT('_')+U16String::numberOf(func->command.GetCount());
+        flag=func->func_name+U16_TEXT('_')+U16String::numberOf(static_cast<int>(func->command.size()));
 
         dci=ParseComp();                                                                            //解析比较表达式
 
         if(!dci)
             return(false);
 
-        func->command.Add(dcg=new CompGoto(module,dci,func));                                  //增加比较跳转控制
+        {
+            auto cmd=std::make_unique<CompGoto>(module,dci,func);
+            dcg=cmd.get();
+            func->command.emplace_back(std::move(cmd));                                        //增加比较跳转控制
+        }
 
         LogInfo(U16_TEXT("%s"),(U16_TEXT("if ")+flag).c_str());
 
@@ -779,7 +784,7 @@ namespace hgl::devil
 
                     if(script_func)
                     {
-                        func->command.Add(new ScriptFuncCall(module,script_func));
+                        func->command.emplace_back(std::make_unique<ScriptFuncCall>(module,script_func));
                         return(true);
                     }
                 }

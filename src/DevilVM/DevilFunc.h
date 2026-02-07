@@ -3,7 +3,8 @@
 #include"DevilCommand.h"
 #include<hgl/type/String.h>
 #include<hgl/log/Log.h>
-#include<hgl/type/ManagedArray.h>
+#include <absl/container/inlined_vector.h>
+#include <memory>
 #include <ankerl/unordered_dense.h>
 
 namespace hgl
@@ -25,7 +26,7 @@ namespace devil
 
         U16String func_name;
 
-        ManagedArray<Command> command;
+        absl::InlinedVector<std::unique_ptr<Command>, 8> command;
 
         ankerl::unordered_dense::map<U16String,int> goto_flag;
 
@@ -43,7 +44,8 @@ namespace devil
 
         int AddCommand(Command *cmd)           //直接增加指令
         {
-            return command.Add(cmd);
+            command.emplace_back(cmd);
+            return static_cast<int>(command.size()-1);
         }
 
         void AddScriptFuncCall(Func *);        //增加脚本函数呼叫

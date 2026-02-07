@@ -7,7 +7,7 @@ namespace devil
 {
     bool Func::AddGotoFlag(const U16String &name)
     {
-        int count=command.GetCount();
+        int count=static_cast<int>(command.size());
 
         if(goto_flag.find(name)==goto_flag.end())
         {
@@ -39,38 +39,41 @@ namespace devil
     void Func::AddGotoCommand(const U16String &name)
     {
         #ifdef _DEBUG
-        const int index=command.Add(new Goto(module,this,name));
+        command.emplace_back(std::make_unique<Goto>(module,this,name));
+        const int index=static_cast<int>(command.size()-1);
 
         LogInfo(U16_TEXT("%s"),
             (U16String::numberOf(index)+U16_TEXT("\tgoto ")+name+U16_TEXT(";"))
                 .c_str());
         #else
-        command.Add(new Goto(module,this,name));
+        command.emplace_back(std::make_unique<Goto>(module,this,name));
         #endif//_DEBUG
     }
 
     void Func::AddReturn()
     {
         #ifdef _DEBUG
-        const int index=command.Add(new Return(module));
+        command.emplace_back(std::make_unique<Return>(module));
+        const int index=static_cast<int>(command.size()-1);
 
         LogInfo(U16_TEXT("%s"),(U16String::numberOf(index)+U16_TEXT("\treturn;"))
                 .c_str());
         #else
-        command.Add(new Return(module));
+        command.emplace_back(std::make_unique<Return>(module));
         #endif//_DEBUG
     }
 
     void Func::AddScriptFuncCall(Func *script_func)
     {
         #ifdef _DEBUG
-        const int index=command.Add(new ScriptFuncCall(module,script_func));
+        command.emplace_back(std::make_unique<ScriptFuncCall>(module,script_func));
+        const int index=static_cast<int>(command.size()-1);
 
         LogInfo(U16_TEXT("%s"),
             (U16String::numberOf(index)+U16_TEXT("\t call ")+script_func->func_name)
                 .c_str());
         #else
-        command.Add(new ScriptFuncCall(module,script_func));
+        command.emplace_back(std::make_unique<ScriptFuncCall>(module,script_func));
         #endif//
     }
 

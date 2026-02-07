@@ -17,11 +17,11 @@ namespace devil
         while(true)
         {
             while(cur_state->index<
-                  cur_state->func->command.GetCount())
+                                    static_cast<int>(cur_state->func->command.size()))
             {
                 ScriptFuncRunState *sfrs=cur_state;                     //cmd->run有可能更改cur_state，所以这里保存，以保证sfrs->index++正确
 
-                Command *cmd=sfrs->func->command[sfrs->index++];   //cmd->run有可能更改index,所以这里先加
+                                Command *cmd=sfrs->func->command[sfrs->index++].get();   //cmd->run有可能更改index,所以这里先加
 
                 #ifdef _DEBUG
                 LogInfo(U16_TEXT("%s"),
