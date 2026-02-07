@@ -14,5 +14,7 @@ macro(cm_example_project sub_folder project_name)
     set_property(TARGET ${project_name} PROPERTY CXX_STANDARD 20)
 endmacro()
 
-cm_example_project("" DevilVM_Hello hello_devilvm.cpp)
-cm_example_project("" DevilVM_Goto goto_devilvm.cpp)
+cm_example_project("" HelloWorld hello_devilvm.cpp)
+cm_example_project("" GotoTest goto_devilvm.cpp)
+
+cm_example_project("" BytecodeTests DevilBytecodeTests.cpp)
