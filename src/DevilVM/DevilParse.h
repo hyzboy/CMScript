@@ -34,6 +34,7 @@ namespace hgl::devil
         std::unique_ptr<Expr> ParseCallOrIdentifier(const std::string &name);
         std::unique_ptr<Stmt> ParseIf();
         std::unique_ptr<Stmt> ParseWhile();
+        std::unique_ptr<Stmt> ParseDoWhile();
         std::unique_ptr<Stmt> ParseFor();
         std::unique_ptr<Stmt> ParseSwitch();
         std::unique_ptr<Stmt> ParseEnum();

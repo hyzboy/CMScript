@@ -81,6 +81,44 @@ namespace hgl::devil
 
         if(const auto *binary=dynamic_cast<const BinaryExpr *>(expr))
         {
+            if(binary->GetOp()==TokenType::And)
+            {
+                if(!BuildExpr(func,binary->GetLeft()))
+                    return false;
+                const size_t jmp_false=Emit(func,OpCode::JumpIfFalse,-1);
+                if(!BuildExpr(func,binary->GetRight()))
+                    return false;
+                const size_t jmp_end=Emit(func,OpCode::Jump,-1);
+
+                const size_t false_pos=func.code.size();
+                func.code[jmp_false].a=static_cast<int32_t>(false_pos);
+                const int32_t false_idx=AddConst(func,AstValue::MakeBool(false));
+                Emit(func,OpCode::PushConst,false_idx);
+
+                const size_t end_pos=func.code.size();
+                func.code[jmp_end].a=static_cast<int32_t>(end_pos);
+                return true;
+            }
+
+            if(binary->GetOp()==TokenType::Or)
+            {
+                if(!BuildExpr(func,binary->GetLeft()))
+                    return false;
+                const size_t jmp_false=Emit(func,OpCode::JumpIfFalse,-1);
+                const int32_t true_idx=AddConst(func,AstValue::MakeBool(true));
+                Emit(func,OpCode::PushConst,true_idx);
+                const size_t jmp_end=Emit(func,OpCode::Jump,-1);
+
+                const size_t rhs_pos=func.code.size();
+                func.code[jmp_false].a=static_cast<int32_t>(rhs_pos);
+                if(!BuildExpr(func,binary->GetRight()))
+                    return false;
+
+                const size_t end_pos=func.code.size();
+                func.code[jmp_end].a=static_cast<int32_t>(end_pos);
+                return true;
+            }
+
             if(!BuildExpr(func,binary->GetLeft()))
                 return false;
             if(!BuildExpr(func,binary->GetRight()))
@@ -99,8 +137,6 @@ namespace hgl::devil
                 case TokenType::LessThanOrEqual: Emit(func,OpCode::Le); return true;
                 case TokenType::GreaterThan: Emit(func,OpCode::Gt); return true;
                 case TokenType::GreaterThanOrEqual: Emit(func,OpCode::Ge); return true;
-                case TokenType::And: Emit(func,OpCode::And); return true;
-                case TokenType::Or: Emit(func,OpCode::Or); return true;
                 case TokenType::BitOr: Emit(func,OpCode::BitOr); return true;
                 case TokenType::BitXor: Emit(func,OpCode::BitXor); return true;
                 case TokenType::Amp: Emit(func,OpCode::BitAnd); return true;
@@ -307,6 +343,45 @@ namespace hgl::devil
             return true;
         }
 
+        if(const auto *dw=dynamic_cast<const DoWhileStmt *>(stmt))
+        {
+            const size_t loop_start=func.code.size();
+
+            LoopContext loop_ctx;
+            loop_ctx.allow_continue=true;
+            loop_ctx.continue_target=loop_start;
+            loop_stack.push_back(loop_ctx);
+
+            if(!BuildBlock(func,dw->GetBody()))
+            {
+                loop_stack.pop_back();
+                return false;
+            }
+
+            const size_t cond_pos=func.code.size();
+            loop_stack.back().continue_target=cond_pos;
+
+            if(!BuildExpr(func,dw->GetCond()))
+            {
+                loop_stack.pop_back();
+                return false;
+            }
+
+            const size_t jmp_out=Emit(func,OpCode::JumpIfFalse,-1);
+            Emit(func,OpCode::Jump,static_cast<int32_t>(loop_start));
+
+            const size_t end_index=func.code.size();
+            func.code[jmp_out].a=static_cast<int32_t>(end_index);
+
+            LoopContext &ctx=loop_stack.back();
+            for(const size_t idx:ctx.continues)
+                func.code[idx].a=static_cast<int32_t>(ctx.continue_target);
+            for(const size_t idx:ctx.breaks)
+                func.code[idx].a=static_cast<int32_t>(end_index);
+            loop_stack.pop_back();
+            return true;
+        }
+
         if(const auto *fs=dynamic_cast<const ForStmt *>(stmt))
         {
             if(const Stmt *init=fs->GetInit())
@@ -408,6 +483,19 @@ namespace hgl::devil
                 {
                     loop_stack.pop_back();
                     return false;
+                }
+
+                if(switch_auto_break)
+                {
+                    const auto &stmts=cases[i].block->GetStatements();
+                    const Stmt *last=stmts.empty()?nullptr:stmts.back().get();
+                    if(!dynamic_cast<const BreakStmt *>(last)
+                        && !dynamic_cast<const ReturnStmt *>(last)
+                        && !dynamic_cast<const GotoStmt *>(last))
+                    {
+                        const size_t auto_break=Emit(func,OpCode::Jump,-1);
+                        loop_stack.back().breaks.push_back(auto_break);
+                    }
                 }
             }
 

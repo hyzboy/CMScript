@@ -37,6 +37,7 @@ namespace hgl::devil
         };
 
         std::vector<LoopContext> loop_stack;
+        bool switch_auto_break=false;
 
         int32_t AddLocal(const std::string &name);
         int32_t GetLocal(const std::string &name) const;
@@ -55,6 +56,7 @@ namespace hgl::devil
 
         void SetHostModule(Module *module){host_module=module;}
         void SetOutput(BytecodeModule *out){bytecode_module=out;}
+        void SetSwitchAutoBreak(bool value){switch_auto_break=value;}
         const std::string &GetError() const{return error;}
 
         bool BuildFunction(const Func *func,BytecodeFunction &out_func);

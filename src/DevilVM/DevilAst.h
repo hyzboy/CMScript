@@ -220,6 +220,19 @@ namespace hgl::devil
         ExecResult Exec(ExecContext &) const override;
     };
 
+    class DoWhileStmt final:public Stmt
+    {
+        std::unique_ptr<BlockStmt> body;
+        std::unique_ptr<Expr> cond;
+
+    public:
+        DoWhileStmt(std::unique_ptr<BlockStmt> b,std::unique_ptr<Expr> c)
+            : body(std::move(b)), cond(std::move(c)){}
+        const BlockStmt *GetBody() const{return body.get();}
+        const Expr *GetCond() const{return cond.get();}
+        ExecResult Exec(ExecContext &) const override;
+    };
+
     class ForStmt final:public Stmt
     {
         std::unique_ptr<Stmt> init;

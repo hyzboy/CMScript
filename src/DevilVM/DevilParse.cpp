@@ -396,6 +396,37 @@ namespace hgl::devil
         return std::make_unique<WhileStmt>(std::move(cond),std::move(body));
     }
 
+    std::unique_ptr<Stmt> Parse::ParseDoWhile()
+    {
+        std::unique_ptr<Stmt> body_stmt=ParseStatement(false);
+        if(!body_stmt)
+            return nullptr;
+
+        std::unique_ptr<BlockStmt> body;
+        if(auto *blk=dynamic_cast<BlockStmt *>(body_stmt.get()))
+            body=std::unique_ptr<BlockStmt>(static_cast<BlockStmt *>(body_stmt.release()));
+        else
+        {
+            std::vector<std::unique_ptr<Stmt>> stmts;
+            stmts.push_back(std::move(body_stmt));
+            body=std::make_unique<BlockStmt>(std::move(stmts));
+        }
+
+        std::string tmp;
+        if(GetToken(tmp)!=TokenType::While)
+        {
+            LogError("%s","do-while missing while keyword");
+            return nullptr;
+        }
+
+        GetToken(TokenType::OpenParanthesis,tmp);
+        std::unique_ptr<Expr> cond=ParseExpression();
+        GetToken(TokenType::CloseParanthesis,tmp);
+        GetToken(TokenType::EndStatement,tmp);
+
+        return std::make_unique<DoWhileStmt>(std::move(body),std::move(cond));
+    }
+
     std::unique_ptr<Stmt> Parse::ParseFor()
     {
         std::string tmp;
@@ -566,6 +597,12 @@ namespace hgl::devil
         {
             GetToken(name);
             return ParseWhile();
+        }
+
+        if(type==TokenType::Do)
+        {
+            GetToken(name);
+            return ParseDoWhile();
         }
 
         if(type==TokenType::For)

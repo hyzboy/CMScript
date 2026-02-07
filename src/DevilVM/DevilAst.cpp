@@ -461,6 +461,12 @@ namespace hgl::devil
         }
     }
 
+    ExecResult DoWhileStmt::Exec(ExecContext &ctx) const
+    {
+        (void)ctx;
+        return ExecResult::Error("do-while statement is not implemented");
+    }
+
     ExecResult ForStmt::Exec(ExecContext &ctx) const
     {
         (void)ctx;
