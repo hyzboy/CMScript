@@ -162,6 +162,27 @@ namespace hgl::devil
         return AstValue::MakeVoid();
     }
 
+    AstValue Context::Call(const char *func_name)
+    {
+        const std::vector<AstValue> empty_args;
+        return Call(func_name,empty_args);
+    }
+
+    AstValue Context::Call(const char *func_name,const std::vector<AstValue> &args)
+    {
+        if(!module || !func_name || !*func_name)
+        {
+            LogError("%s","Call missing module or function name");
+            return AstValue::MakeVoid();
+        }
+
+        Func *func=module->GetScriptFunc(func_name);
+        if(!func)
+            return AstValue::MakeVoid();
+
+        return ExecuteFunction(func,nullptr,args);
+    }
+
     bool Context::Start(Func *func,...)
     {
         ExecuteFunction(func,nullptr);

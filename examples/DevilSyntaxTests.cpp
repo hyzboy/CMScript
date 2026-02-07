@@ -65,8 +65,7 @@ int helper(int x)
 
     Context ctx(&module);
     ctx.SetUseBytecode(false);
-    ctx.Start("main");
-
-    std::cout<<"syntax test: parsed and executed"<<std::endl;
+    const AstValue result=ctx.Call("main");
+    std::cout<<"syntax test: main returned "<<result.ToString()<<std::endl;
     return 0;
 }

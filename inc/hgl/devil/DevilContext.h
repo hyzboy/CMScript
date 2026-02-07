@@ -59,6 +59,8 @@ namespace hgl::devil
 
         AstValue ExecuteFunction(Func *func,const char *start_label);
         AstValue ExecuteFunction(Func *func,const char *start_label,const std::vector<AstValue> &args);
+        AstValue Call(const char *func_name);
+        AstValue Call(const char *func_name,const std::vector<AstValue> &args);
 
         virtual bool Start(Func *,...);
         virtual bool Start(const char *);
