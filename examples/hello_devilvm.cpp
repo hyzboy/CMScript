@@ -20,7 +20,7 @@ int main()
 {
     hgl::devil::Module module;
 
-    if(!module.MapFunc("void print(string)", (void *)(&PrintU16)))
+    if(!module.MapFunc("print", &PrintU16))
     {
         std::cerr << "MapFunc failed." << std::endl;
         return 1;

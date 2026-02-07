@@ -18,7 +18,7 @@ int main()
 {
     hgl::devil::Module module;
 
-    if(!module.MapFunc("void set(int)", (void *)(&SetValue)))
+    if(!module.MapFunc("set", &SetValue))
     {
         std::cerr << "MapFunc failed." << std::endl;
         return 1;

@@ -7,6 +7,28 @@ namespace hgl
 {
 namespace devil
 {
+    namespace
+    {
+        eTokenType ToToken(detail::BindType type)
+        {
+            switch(type)
+            {
+                case detail::BindType::Void:   return ttVoid;
+                case detail::BindType::Bool:   return ttBool;
+                case detail::BindType::Int:    return ttInt;
+                case detail::BindType::Int8:   return ttInt8;
+                case detail::BindType::Int16:  return ttInt16;
+                case detail::BindType::UInt:   return ttUInt;
+                case detail::BindType::UInt8:  return ttUInt8;
+                case detail::BindType::UInt16: return ttUInt16;
+                case detail::BindType::Float:  return ttFloat;
+                case detail::BindType::String: return ttString;
+            }
+
+            return ttVoid;
+        }
+    }//namespace
+
     /**
     * 映射一个属性
     * @param intro 属性在脚本语言中的描述,如"int value","string name"等
@@ -127,6 +149,54 @@ namespace devil
                                         return(false);
             }
         }
+    }
+
+    bool Module::_MapFuncTyped(const char *name,void *this_pointer,void *func_pointer,detail::BindType result,std::initializer_list<detail::BindType> params)
+    {
+        if(!name||!(*name))
+            return(false);
+
+        if(func_map.find(name)!=func_map.end())
+        {
+            LogError("%s",
+                     ("repeat func name:"+std::string(name)).c_str());
+            return(false);
+        }
+
+        FuncMap *dfm=new FuncMap;
+
+        dfm->base=this_pointer;
+        dfm->func=func_pointer;
+        dfm->result=ToToken(result);
+
+        dfm->param.reserve(params.size());
+        for(const detail::BindType type:params)
+            dfm->param.push_back(ToToken(type));
+
+        func_map.emplace(name,dfm);
+
+        #ifdef _DEBUG
+        {
+            std::string func_intro=std::string(GetTokenName(dfm->result)) + " " + name + "(";
+
+            for(size_t i=0;i<dfm->param.size();++i)
+            {
+                if(i>0)
+                    func_intro.push_back(',');
+
+                func_intro+=GetTokenName(dfm->param[i]);
+            }
+
+            func_intro.push_back(')');
+
+            LogInfo("%s",
+                ("映射函数成功，参数"
+                 +std::to_string(static_cast<int>(dfm->param.size()))
+                 +"个:"+func_intro).c_str());
+        }
+        #endif//_DEBUG
+
+        return(true);
     }
 
     /**
