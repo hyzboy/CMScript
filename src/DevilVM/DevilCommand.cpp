@@ -90,7 +90,11 @@ namespace devil
 
     void Goto::UpdateGotoFlag()
     {
-        func->goto_flag.Get(name,index);        // 由于跳转标识有可能在这个GOTO之后定义，所以必须等这个函数解晰完了，再调用SetLine
+        {
+            const auto it=func->goto_flag.find(name);
+            if(it!=func->goto_flag.end())
+                index=it->second;
+        }                                       // 由于跳转标识有可能在这个GOTO之后定义，所以必须等这个函数解晰完了，再调用SetLine
 
         if(index==-1)
             LogError(U16_TEXT("%s"),
@@ -131,7 +135,11 @@ namespace devil
 
     void CompGoto::UpdateGotoFlag()
     {
-        func->goto_flag.Get(else_flag,index);
+        {
+            const auto it=func->goto_flag.find(else_flag);
+            if(it!=func->goto_flag.end())
+                index=it->second;
+        }
 
         if(index==-1)
             LogError(U16_TEXT("%s"),

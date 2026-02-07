@@ -1,7 +1,7 @@
 #pragma once
 
 #include<hgl/type/String.h>
-#include<hgl/type/UnorderedMap.h>
+#include <ankerl/unordered_dense.h>
 namespace hgl
 {
 namespace devil
@@ -21,7 +21,7 @@ namespace devil
 
     template<typename T>class EnumTypedef:public Enum                                     ///枚举数据类型定义基类
     {
-        UnorderedMap<U16String,T> Items;                                                               ///<枚举项名字
+        ankerl::unordered_dense::map<U16String,T> Items;                                               ///<枚举项名字
 
     public:
 

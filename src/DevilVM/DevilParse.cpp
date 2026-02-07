@@ -192,7 +192,23 @@ namespace hgl::devil
                                                 // 脚本函数暂时不支持参数
         GetToken(ttCloseParanthesis,name);      // )
 
-        return ParseCode(func);
+        if(!ParseCode(func))
+            return(false);
+
+        for(int i=0;i<func->command.GetCount();i++)
+        {
+            Command *cmd=func->command[i];
+            if(!cmd)
+                continue;
+
+            if(auto *goto_cmd=dynamic_cast<Goto *>(cmd))
+                goto_cmd->UpdateGotoFlag();
+            else
+            if(auto *comp_goto_cmd=dynamic_cast<CompGoto *>(cmd))
+                comp_goto_cmd->UpdateGotoFlag();
+        }
+
+        return(true);
     }
 
     bool Parse::ParseCode(Func *func)

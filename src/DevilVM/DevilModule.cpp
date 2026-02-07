@@ -22,7 +22,7 @@ namespace devil
 
         parse.GetToken(name);
 
-        if(prop_map.ContainsKey(name))              //在已有记录找到同名的映射
+        if(prop_map.find(name)!=prop_map.end())     //在已有记录找到同名的映射
         {
             LogError(U16_TEXT("%s"),
                      (U16_TEXT("重复属性名映射: ")+U16String(intro)).c_str());
@@ -40,7 +40,7 @@ namespace devil
             dpm->type=type;
             dpm->address=address;
 
-            prop_map.Add(name,dpm);
+            prop_map.emplace(name,dpm);
 
             return(true);
         }
@@ -58,7 +58,7 @@ namespace devil
 
         parse.GetToken(func_name);                      //取得函数名称
 
-        if(func_map.ContainsKey(func_name))             //在已有记录找到同名的映射
+        if(func_map.find(func_name)!=func_map.end())    //在已有记录找到同名的映射
         {
             LogError(U16_TEXT("%s"),
                      (U16_TEXT("repeat func name:")+U16String(intro)).c_str());
@@ -87,7 +87,7 @@ namespace devil
 
             switch(type)
             {
-                case ttCloseParanthesis:func_map.Add(func_name,dfm);        //找到右括号
+                case ttCloseParanthesis:func_map.emplace(func_name,dfm);    //找到右括号
                                         #ifdef _DEBUG
                                                 func_intro+=U16String::charOf(U16_TEXT(')'));
 
@@ -165,10 +165,9 @@ namespace devil
 
     Func *Module::GetScriptFunc(const U16String &name)
     {
-        Func *func;
-
-        if(script_func.Get(name,func))
-            return func;
+        const auto it=script_func.find(name);
+        if(it!=script_func.end())
+            return it->second;
 
         LogError(U16_TEXT("%s"),
              (U16_TEXT("没有找到指定脚本函数: ")+name).c_str());
@@ -177,33 +176,31 @@ namespace devil
 
     FuncMap *Module::GetFuncMap(const U16String &name)
     {
-        FuncMap *func;
-
-        if(func_map.Get(name,func))
-            return func;
+        const auto it=func_map.find(name);
+        if(it!=func_map.end())
+            return it->second;
         else
             return(nullptr);
     }
 
     bool Module::AddEnum(const u16char *enum_name,Enum *script_enum)
     {
-        if(enum_map.ContainsKey(enum_name))
+        if(enum_map.find(enum_name)!=enum_map.end())
         {
             LogError(U16_TEXT("%s"),
                      (U16_TEXT("枚举名称重复: ")+U16String(enum_name)).c_str());
             return(false);
         }
 
-        enum_map.Add(enum_name,script_enum);
+        enum_map.emplace(enum_name,script_enum);
         return(true);
     }
 
     PropertyMap *Module::GetPropertyMap(const U16String &name)
     {
-        PropertyMap *dpm;
-
-        if(prop_map.Get(name,dpm))
-            return dpm;
+        const auto it=prop_map.find(name);
+        if(it!=prop_map.end())
+            return it->second;
         else
             return(nullptr);
     }
@@ -235,7 +232,7 @@ namespace devil
             {
                 parse.GetToken(name);                           //取得函数名
 
-                if(!script_func.ContainsKey(name))              //查找是否有同样的函数名存在
+                if(script_func.find(name)==script_func.end())   //查找是否有同样的函数名存在
                 {
                     Func *func=new Func(this,name);
 
@@ -243,7 +240,7 @@ namespace devil
 
                     if(parse.ParseFunc(func))                   //解析函数
                     {
-                        script_func.Add(name,func);
+                        script_func.emplace(name,func);
 
                         LogInfo(U16_TEXT("%s"),U16_TEXT("}\n"));
                     }
@@ -281,14 +278,14 @@ namespace devil
 
     void Module::Clear()
     {
-        script_func.Clear();
+        script_func.clear();
         string_list.Clear();
     }
 
 #ifdef _DEBUG
     void Module::LogPropertyList()
     {
-        int n=prop_map.GetCount();
+        int n=static_cast<int>(prop_map.size());
 
         LogInfo(U16_TEXT("%s"),(U16_TEXT("\n映射属性列表数量:")+U16String::numberOf(n)).c_str());
 
@@ -308,7 +305,7 @@ namespace devil
 
     void Module::LogMapFuncList()
     {
-        int n=func_map.GetCount();
+        int n=static_cast<int>(func_map.size());
 
         LogInfo(U16_TEXT("%s"),(U16_TEXT("\n映射函数列表数量:")+U16String::numberOf(n)).c_str());
 
@@ -345,7 +342,7 @@ namespace devil
 
     void Module::LogScriptFuncList()
     {
-        int n=script_func.GetCount();
+        int n=static_cast<int>(script_func.size());
 
         LogInfo(U16_TEXT("%s"),(U16_TEXT("\n脚本函数列表数量:")+U16String::numberOf(n)).c_str());
 

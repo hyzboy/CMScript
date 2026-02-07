@@ -7,7 +7,7 @@
 #include <hgl/platform/compiler/EventFunc.h>
 #include <hgl/type/String.h>
 #include <hgl/type/StringList.h>
-#include <hgl/type/UnorderedMap.h>
+#include <ankerl/unordered_dense.h>
 #include <vector>
 
 namespace hgl
@@ -59,10 +59,10 @@ namespace devil
     {
         OBJECT_LOGGER
 
-        UnorderedMap<U16String,PropertyMap *>   prop_map;       //属性映射表
-        UnorderedMap<U16String,FuncMap *>       func_map;       //函数映射表
-        UnorderedMap<U16String,Func *>          script_func;    //脚本函数表
-        UnorderedMap<U16String,Enum *>          enum_map;       //枚举映射表
+        ankerl::unordered_dense::map<U16String,PropertyMap *>   prop_map;       //属性映射表
+        ankerl::unordered_dense::map<U16String,FuncMap *>       func_map;       //函数映射表
+        ankerl::unordered_dense::map<U16String,Func *>          script_func;    //脚本函数表
+        ankerl::unordered_dense::map<U16String,Enum *>          enum_map;       //枚举映射表
 
     private:
 

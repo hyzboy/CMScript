@@ -9,9 +9,9 @@ namespace devil
     {
         int count=command.GetCount();
 
-        if(!goto_flag.ContainsKey(name))
+        if(goto_flag.find(name)==goto_flag.end())
         {
-            goto_flag.Add(name,count);
+            goto_flag.emplace(name,count);
 
             LogInfo(U16_TEXT("%s"),(U16_TEXT(":")+name).c_str());
 
@@ -29,8 +29,9 @@ namespace devil
     {
         int index;
 
-        if(goto_flag.Get(name,index))
-            return(index);
+        const auto it=goto_flag.find(name);
+        if(it!=goto_flag.end())
+            return(it->second);
 
         return -1;
     }
@@ -75,7 +76,7 @@ namespace devil
 
     ValueInterface *Func::AddValue(eTokenType type,const U16String &name)
     {
-        if(script_value_list.ContainsKey(name))
+        if(script_value_list.find(name)!=script_value_list.end())
         {
             LogError(U16_TEXT("%s"),(U16_TEXT("添加变量失败，变量名称重复:")+name).c_str());
 

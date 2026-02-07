@@ -4,7 +4,7 @@
 #include<hgl/type/String.h>
 #include<hgl/log/Log.h>
 #include<hgl/type/ManagedArray.h>
-#include<hgl/type/UnorderedMap.h>
+#include <ankerl/unordered_dense.h>
 
 namespace hgl
 {
@@ -27,9 +27,9 @@ namespace devil
 
         ManagedArray<Command> command;
 
-        UnorderedMap<U16String,int> goto_flag;
+        ankerl::unordered_dense::map<U16String,int> goto_flag;
 
-        UnorderedMap<U16String,ValueInterface *> script_value_list;
+        ankerl::unordered_dense::map<U16String,ValueInterface *> script_value_list;
 
     public:
 

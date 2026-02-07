@@ -275,13 +275,16 @@ namespace devil
 
         int index;
 
-        if(!cur_state->func->goto_flag.Get(flag,index))
+        const auto it=cur_state->func->goto_flag.find(flag);
+        if(it==cur_state->func->goto_flag.end())
         {
             LogError(U16_TEXT("%s"),
                      (U16_TEXT("没有在函数")+cur_state->func->func_name+U16_TEXT("内找到跳转标识")
                       +U16String(flag)).c_str());
             return(false);
         }
+
+        index=it->second;
 
         return Goto(cur_state->func,index);
     }
