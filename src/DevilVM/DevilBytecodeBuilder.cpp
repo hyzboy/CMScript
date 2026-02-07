@@ -229,6 +229,30 @@ namespace hgl::devil
             return true;
         }
 
+        if(const auto *brk=dynamic_cast<const BreakStmt *>(stmt))
+        {
+            if(loop_stack.empty())
+            {
+                error="break used outside loop/switch";
+                return false;
+            }
+            const size_t jump_index=Emit(func,OpCode::Jump,-1);
+            loop_stack.back().breaks.push_back(jump_index);
+            return true;
+        }
+
+        if(const auto *cont=dynamic_cast<const ContinueStmt *>(stmt))
+        {
+            if(loop_stack.empty() || !loop_stack.back().allow_continue)
+            {
+                error="continue used outside loop";
+                return false;
+            }
+            const size_t jump_index=Emit(func,OpCode::Jump,-1);
+            loop_stack.back().continues.push_back(jump_index);
+            return true;
+        }
+
         if(const auto *ifs=dynamic_cast<const IfStmt *>(stmt))
         {
             if(!BuildExpr(func,ifs->GetCond()))
@@ -258,10 +282,155 @@ namespace hgl::devil
             if(!BuildExpr(func,ws->GetCond()))
                 return false;
             const size_t jmp_out=Emit(func,OpCode::JumpIfFalse,-1);
+
+            LoopContext loop_ctx;
+            loop_ctx.allow_continue=true;
+            loop_ctx.continue_target=loop_start;
+            loop_stack.push_back(loop_ctx);
+
             if(!BuildBlock(func,ws->GetBody()))
+            {
+                loop_stack.pop_back();
                 return false;
+            }
             Emit(func,OpCode::Jump,static_cast<int32_t>(loop_start));
-            func.code[jmp_out].a=static_cast<int32_t>(func.code.size());
+
+            const size_t end_index=func.code.size();
+            func.code[jmp_out].a=static_cast<int32_t>(end_index);
+
+            LoopContext &ctx=loop_stack.back();
+            for(const size_t idx:ctx.continues)
+                func.code[idx].a=static_cast<int32_t>(ctx.continue_target);
+            for(const size_t idx:ctx.breaks)
+                func.code[idx].a=static_cast<int32_t>(end_index);
+            loop_stack.pop_back();
+            return true;
+        }
+
+        if(const auto *fs=dynamic_cast<const ForStmt *>(stmt))
+        {
+            if(const Stmt *init=fs->GetInit())
+            {
+                if(!BuildStmt(func,init))
+                    return false;
+            }
+
+            const size_t loop_start=func.code.size();
+            size_t jmp_out=static_cast<size_t>(-1);
+            if(const Expr *cond=fs->GetCond())
+            {
+                if(!BuildExpr(func,cond))
+                    return false;
+                jmp_out=Emit(func,OpCode::JumpIfFalse,-1);
+            }
+
+            LoopContext loop_ctx;
+            loop_ctx.allow_continue=true;
+            loop_ctx.continue_target=loop_start;
+            loop_stack.push_back(loop_ctx);
+
+            if(!BuildBlock(func,fs->GetBody()))
+            {
+                loop_stack.pop_back();
+                return false;
+            }
+
+            const size_t post_start=func.code.size();
+            loop_stack.back().continue_target=post_start;
+
+            if(const Expr *post=fs->GetPost())
+            {
+                if(!BuildExpr(func,post))
+                {
+                    loop_stack.pop_back();
+                    return false;
+                }
+                Emit(func,OpCode::Pop);
+            }
+
+            Emit(func,OpCode::Jump,static_cast<int32_t>(loop_start));
+
+            const size_t end_index=func.code.size();
+            if(jmp_out!=static_cast<size_t>(-1))
+                func.code[jmp_out].a=static_cast<int32_t>(end_index);
+
+            LoopContext &ctx=loop_stack.back();
+            for(const size_t idx:ctx.continues)
+                func.code[idx].a=static_cast<int32_t>(ctx.continue_target);
+            for(const size_t idx:ctx.breaks)
+                func.code[idx].a=static_cast<int32_t>(end_index);
+            loop_stack.pop_back();
+            return true;
+        }
+
+        if(const auto *sw=dynamic_cast<const SwitchStmt *>(stmt))
+        {
+            if(!BuildExpr(func,sw->GetExpr()))
+                return false;
+
+            const std::string temp_name="$switch_tmp_"+std::to_string(locals.size());
+            const int32_t temp_local=AddLocal(temp_name);
+            Emit(func,OpCode::StoreLocal,temp_local);
+
+            size_t pending_not=static_cast<size_t>(-1);
+            std::vector<size_t> case_jumps;
+            const auto &cases=sw->GetCases();
+            for(const auto &case_item:cases)
+            {
+                const size_t compare_pos=func.code.size();
+                if(pending_not!=static_cast<size_t>(-1))
+                    func.code[pending_not].a=static_cast<int32_t>(compare_pos);
+
+                Emit(func,OpCode::LoadLocal,temp_local);
+                if(!BuildExpr(func,case_item.expr.get()))
+                    return false;
+                Emit(func,OpCode::Eq);
+                pending_not=Emit(func,OpCode::JumpIfFalse,-1);
+                const size_t jmp_case=Emit(func,OpCode::Jump,-1);
+                case_jumps.push_back(jmp_case);
+            }
+
+            const size_t after_compares=func.code.size();
+            if(pending_not!=static_cast<size_t>(-1))
+                func.code[pending_not].a=static_cast<int32_t>(after_compares);
+
+            const size_t default_jump=Emit(func,OpCode::Jump,-1);
+
+            LoopContext loop_ctx;
+            loop_ctx.allow_continue=false;
+            loop_stack.push_back(loop_ctx);
+
+            for(size_t i=0;i<cases.size();++i)
+            {
+                const size_t case_pos=func.code.size();
+                func.code[case_jumps[i]].a=static_cast<int32_t>(case_pos);
+                if(!BuildBlock(func,cases[i].block.get()))
+                {
+                    loop_stack.pop_back();
+                    return false;
+                }
+            }
+
+            const size_t default_pos=func.code.size();
+            if(const BlockStmt *def_block=sw->GetDefault())
+            {
+                func.code[default_jump].a=static_cast<int32_t>(default_pos);
+                if(!BuildBlock(func,def_block))
+                {
+                    loop_stack.pop_back();
+                    return false;
+                }
+            }
+            else
+            {
+                func.code[default_jump].a=static_cast<int32_t>(default_pos);
+            }
+
+            const size_t end_index=func.code.size();
+            LoopContext &ctx=loop_stack.back();
+            for(const size_t idx:ctx.breaks)
+                func.code[idx].a=static_cast<int32_t>(end_index);
+            loop_stack.pop_back();
             return true;
         }
 

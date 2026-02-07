@@ -455,23 +455,74 @@ namespace hgl::devil
     {
         std::string tmp;
         GetToken(TokenType::OpenParanthesis,tmp);
-        ParseExpression();
+        std::unique_ptr<Expr> expr=ParseExpression();
         GetToken(TokenType::CloseParanthesis,tmp);
         GetToken(TokenType::StartStatementBlock,tmp);
-        int depth=1;
-        while(depth>0)
+
+        std::vector<SwitchCase> cases;
+        std::unique_ptr<BlockStmt> default_block;
+
+        while(true)
         {
-            TokenType t=GetToken(tmp);
-            if(t==TokenType::StartStatementBlock)
-                depth++;
-            else
+            TokenType t=CheckToken(tmp);
             if(t==TokenType::EndStatementBlock)
-                depth--;
-            else
+            {
+                GetToken(tmp);
+                break;
+            }
             if(t==TokenType::End)
                 break;
+
+            if(t==TokenType::Case)
+            {
+                GetToken(tmp);
+                std::unique_ptr<Expr> case_expr=ParseExpression();
+                GetToken(TokenType::Colon,tmp);
+
+                std::vector<std::unique_ptr<Stmt>> stmts;
+                while(true)
+                {
+                    TokenType nt=CheckToken(tmp);
+                    if(nt==TokenType::Case || nt==TokenType::Default || nt==TokenType::EndStatementBlock || nt==TokenType::End)
+                        break;
+
+                    std::unique_ptr<Stmt> stmt=ParseStatement(false);
+                    if(!stmt)
+                        return nullptr;
+                    stmts.push_back(std::move(stmt));
+                }
+
+                cases.push_back(SwitchCase{std::move(case_expr),std::make_unique<BlockStmt>(std::move(stmts))});
+                continue;
+            }
+
+            if(t==TokenType::Default)
+            {
+                GetToken(tmp);
+                GetToken(TokenType::Colon,tmp);
+
+                std::vector<std::unique_ptr<Stmt>> stmts;
+                while(true)
+                {
+                    TokenType nt=CheckToken(tmp);
+                    if(nt==TokenType::Case || nt==TokenType::Default || nt==TokenType::EndStatementBlock || nt==TokenType::End)
+                        break;
+
+                    std::unique_ptr<Stmt> stmt=ParseStatement(false);
+                    if(!stmt)
+                        return nullptr;
+                    stmts.push_back(std::move(stmt));
+                }
+
+                default_block=std::make_unique<BlockStmt>(std::move(stmts));
+                continue;
+            }
+
+            LogError("%s","ParseSwitch unexpected token");
+            return nullptr;
         }
-        return std::make_unique<SwitchStmt>();
+
+        return std::make_unique<SwitchStmt>(std::move(expr),std::move(cases),std::move(default_block));
     }
 
     std::unique_ptr<Stmt> Parse::ParseEnum()
@@ -555,6 +606,20 @@ namespace hgl::devil
             GetToken(name);
             GetToken(TokenType::EndStatement,name);
             return std::make_unique<GotoStmt>(name);
+        }
+
+        if(type==TokenType::Break)
+        {
+            GetToken(name);
+            GetToken(TokenType::EndStatement,name);
+            return std::make_unique<BreakStmt>();
+        }
+
+        if(type==TokenType::Continue)
+        {
+            GetToken(name);
+            GetToken(TokenType::EndStatement,name);
+            return std::make_unique<ContinueStmt>();
         }
 
         if(IsTypeToken(type))

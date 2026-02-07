@@ -28,6 +28,16 @@ namespace hgl::devil
 
         std::vector<PendingJump> pending_gotos;
 
+        struct LoopContext
+        {
+            std::vector<size_t> breaks;
+            std::vector<size_t> continues;
+            size_t continue_target=0;
+            bool allow_continue=true;
+        };
+
+        std::vector<LoopContext> loop_stack;
+
         int32_t AddLocal(const std::string &name);
         int32_t GetLocal(const std::string &name) const;
 

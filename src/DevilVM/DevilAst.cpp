@@ -473,6 +473,18 @@ namespace hgl::devil
         return ExecResult::Error("switch statement is not implemented");
     }
 
+    ExecResult BreakStmt::Exec(ExecContext &ctx) const
+    {
+        (void)ctx;
+        return ExecResult::Error("break statement is not implemented");
+    }
+
+    ExecResult ContinueStmt::Exec(ExecContext &ctx) const
+    {
+        (void)ctx;
+        return ExecResult::Error("continue statement is not implemented");
+    }
+
     ExecResult EnumDeclStmt::Exec(ExecContext &ctx) const
     {
         (void)ctx;

@@ -230,10 +230,42 @@ namespace hgl::devil
     public:
         ForStmt(std::unique_ptr<Stmt> i,std::unique_ptr<Expr> c,std::unique_ptr<Expr> p,std::unique_ptr<BlockStmt> b)
             : init(std::move(i)), cond(std::move(c)), post(std::move(p)), body(std::move(b)){}
+        const Stmt *GetInit() const{return init.get();}
+        const Expr *GetCond() const{return cond.get();}
+        const Expr *GetPost() const{return post.get();}
+        const BlockStmt *GetBody() const{return body.get();}
         ExecResult Exec(ExecContext &) const override;
     };
 
+    struct SwitchCase
+    {
+        std::unique_ptr<Expr> expr;
+        std::unique_ptr<BlockStmt> block;
+    };
+
     class SwitchStmt final:public Stmt
+    {
+        std::unique_ptr<Expr> expr;
+        std::vector<SwitchCase> cases;
+        std::unique_ptr<BlockStmt> default_block;
+
+    public:
+        SwitchStmt(std::unique_ptr<Expr> e,std::vector<SwitchCase> c,std::unique_ptr<BlockStmt> d)
+            : expr(std::move(e)), cases(std::move(c)), default_block(std::move(d)){}
+
+        const Expr *GetExpr() const{return expr.get();}
+        const std::vector<SwitchCase> &GetCases() const{return cases;}
+        const BlockStmt *GetDefault() const{return default_block.get();}
+        ExecResult Exec(ExecContext &) const override;
+    };
+
+    class BreakStmt final:public Stmt
+    {
+    public:
+        ExecResult Exec(ExecContext &) const override;
+    };
+
+    class ContinueStmt final:public Stmt
     {
     public:
         ExecResult Exec(ExecContext &) const override;
