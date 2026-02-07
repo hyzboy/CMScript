@@ -383,6 +383,15 @@ namespace hgl::devil
         return it->second;
     }
 
+    AstValue CastExpr::Eval(ExecContext &ctx) const
+    {
+        AstValue rhs=value->Eval(ctx);
+        if(!ctx.error.empty())
+            return AstValue::MakeVoid();
+
+        return CastValue(rhs,target_type);
+    }
+
     AstValue CallExpr::Eval(ExecContext &ctx) const
     {
         std::vector<AstValue> values;

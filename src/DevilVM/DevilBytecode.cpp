@@ -102,6 +102,24 @@ namespace hgl::devil
                 default: return AstValue::MakeBool(false);
             }
         }
+
+        AstValue CastToType(const AstValue &value,TokenType type)
+        {
+            switch(type)
+            {
+                case TokenType::Bool:   return AstValue::MakeBool(value.ToBool());
+                case TokenType::Int:
+                case TokenType::Int8:
+                case TokenType::Int16:  return AstValue::MakeInt(value.ToInt());
+                case TokenType::UInt:
+                case TokenType::UInt8:
+                case TokenType::UInt16: return AstValue::MakeUInt(value.ToUInt());
+                case TokenType::Float:  return AstValue::MakeFloat(value.ToFloat());
+                case TokenType::String: return AstValue::MakeString(value.ToString());
+                case TokenType::Void:   return AstValue::MakeVoid();
+                default:                return AstValue::MakeVoid();
+            }
+        }
     }
 
     bool BytecodeModule::AddFunction(BytecodeFunction func)
@@ -269,6 +287,19 @@ namespace hgl::devil
                     return false;
                 }
                 value_stack[index]=std::move(v);
+                return true;
+            }
+
+            case OpCode::Cast:
+            {
+                bool ok=false;
+                AstValue v=PopValue(value_stack,ok);
+                if(!ok)
+                {
+                    error="bytecode cast underflow";
+                    return false;
+                }
+                value_stack.push_back(CastToType(v,static_cast<TokenType>(ins.a)));
                 return true;
             }
 

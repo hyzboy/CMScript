@@ -19,7 +19,7 @@ namespace
 int main(int,char **)
 {
     const char *script=
-        "func main() { "
+        "int main() { "
         "int a=0; int i=0; "
         "while(i<100000){ a=a+1; i=i+1; } "
         "return a; "

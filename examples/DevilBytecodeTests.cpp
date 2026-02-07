@@ -13,18 +13,18 @@ int main(int,char **)
     BytecodeBuilder builder(&module,&bc_module);
 
     const char *script=
-        "func main() { "
+        "int main() { "
         "int a=1; int b=2; "
         "if(a<b){ b=b+1; } else { b=b-1; } "
         "return add(a,b); "
         "} "
-        "func looptest() { "
+        "int looptest() { "
         "int x=0; "
         "do { x=x+1; } while(x<3); "
         "switch(x){ case 3: x=7; break; default: x=9; } "
         "return x; "
         "} "
-        "func add(int x,int y){ return x+y; }";
+        "int add(int x,int y){ return x+y; }";
 
     if(!module.AddScript(script,-1))
     {

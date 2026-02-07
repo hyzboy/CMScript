@@ -134,6 +134,19 @@ namespace hgl::devil
         AstValue Eval(ExecContext &) const override;
     };
 
+    class CastExpr final:public Expr
+    {
+        TokenType target_type;
+        std::unique_ptr<Expr> value;
+
+    public:
+        CastExpr(TokenType type,std::unique_ptr<Expr> v)
+            : target_type(type), value(std::move(v)){}
+        TokenType GetTargetType() const{return target_type;}
+        const Expr *GetValue() const{return value.get();}
+        AstValue Eval(ExecContext &) const override;
+    };
+
     class CallExpr final:public Expr
     {
         std::string name;

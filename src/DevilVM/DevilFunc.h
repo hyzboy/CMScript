@@ -29,6 +29,7 @@ namespace hgl::devil
         };
 
         std::string func_name;
+        TokenType return_type=TokenType::Void;
 
         std::vector<Param> params;
         std::unique_ptr<BlockStmt> body;
@@ -43,6 +44,11 @@ namespace hgl::devil
             params=std::move(new_params);
         }
 
+        void SetReturnType(TokenType type)
+        {
+            return_type=type;
+        }
+
         void SetBody(std::unique_ptr<BlockStmt> new_body,ankerl::unordered_dense::map<std::string,size_t> labels)
         {
             body=std::move(new_body);
@@ -50,6 +56,7 @@ namespace hgl::devil
         }
 
         const std::vector<Param> &GetParams() const{return params;}
+        TokenType GetReturnType() const{return return_type;}
         const BlockStmt *GetBody() const{return body.get();}
         const ankerl::unordered_dense::map<std::string,size_t> &GetLabels() const{return label_index;}
     };//class Func

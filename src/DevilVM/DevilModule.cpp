@@ -182,23 +182,44 @@ namespace devil
 
         bytecode_module.SetHostModule(this);
 
+        auto is_type_token=[](TokenType type)
+        {
+            return type==TokenType::Bool || type==TokenType::String
+                || type==TokenType::Int || type==TokenType::UInt
+                || type==TokenType::Int8 || type==TokenType::UInt8
+                || type==TokenType::Int16 || type==TokenType::UInt16
+                || type==TokenType::Float || type==TokenType::Void;
+        };
+
         while(true)
         {
-            TokenType type=parse.GetToken(name);               //不停的通过func关键字查找函数
+            TokenType type=parse.GetToken(name);
 
             if(type==TokenType::Func)
             {
-                parse.GetToken(name);                           //取得函数名
+                LogError("%s","'func' keyword is not supported. Use 'return_type name()' syntax.");
+                return(false);
+            }
 
-                if(script_func.find(name)==script_func.end())   //查找是否有同样的函数名存在
+            if(is_type_token(type))
+            {
+                std::string func_name;
+                if(parse.GetToken(func_name)!=TokenType::Identifier)
                 {
-                    Func *func=new Func(this,name);
+                    LogError("%s","function name expected after return type");
+                    return(false);
+                }
 
-                    LogInfo("%s",("func "+name+"()\n{").c_str());
+                if(script_func.find(func_name)==script_func.end())   //查找是否有同样的函数名存在
+                {
+                    Func *func=new Func(this,func_name);
+                    func->SetReturnType(type);
+
+                    LogInfo("%s",("function "+func_name+"()\n{").c_str());
 
                     if(parse.ParseFunc(func))                   //解析函数
                     {
-                        script_func.emplace(name,func);
+                        script_func.emplace(func_name,func);
 
                         if(use_bytecode)
                         {
@@ -216,13 +237,13 @@ namespace devil
                     {
                         delete func;
 
-                        LogError("%s",("解晰函数失败: "+name).c_str());
+                        LogError("%s",("解晰函数失败: "+func_name).c_str());
                         return(false);
                     }
                 }
                 else
                 {
-                    LogError("%s",("脚本函数名称重复: "+name).c_str());
+                    LogError("%s",("脚本函数名称重复: "+func_name).c_str());
                     return(false);
                 }
 

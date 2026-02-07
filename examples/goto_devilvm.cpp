@@ -24,7 +24,7 @@ int main()
     }
 
     const char *script =
-        "func main(){"
+        "void main(){"
         " goto L2;"
         " L1: set(1); goto END;"
         " L2: set(2); goto L1;"

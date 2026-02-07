@@ -167,6 +167,14 @@ namespace hgl::devil
             return true;
         }
 
+        if(const auto *cast=dynamic_cast<const CastExpr *>(expr))
+        {
+            if(!BuildExpr(func,cast->GetValue()))
+                return false;
+            Emit(func,OpCode::Cast,static_cast<int32_t>(cast->GetTargetType()));
+            return true;
+        }
+
         if(const auto *call=dynamic_cast<const CallExpr *>(expr))
         {
             const auto &args=call->GetArgs();

@@ -17,6 +17,7 @@ namespace hgl::devil
         Pop,
         LoadLocal,
         StoreLocal,
+        Cast,
         Add,
         Sub,
         Mul,

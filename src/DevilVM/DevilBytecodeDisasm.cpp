@@ -1,4 +1,5 @@
 #include <hgl/devil/DevilBytecode.h>
+#include "as_tokenizer.h"
 #include <sstream>
 
 namespace hgl::devil
@@ -33,6 +34,7 @@ namespace hgl::devil
             case OpCode::Pop: return "Pop";
             case OpCode::LoadLocal: return "LoadLocal";
             case OpCode::StoreLocal: return "StoreLocal";
+            case OpCode::Cast: return "Cast";
             case OpCode::Add: return "Add";
             case OpCode::Sub: return "Sub";
             case OpCode::Mul: return "Mul";
@@ -87,6 +89,15 @@ namespace hgl::devil
             case OpCode::JumpIfFalse:
                 out<<" "<<ins.a;
                 break;
+            case OpCode::Cast:
+            {
+                const char *type_name=GetTokenName(static_cast<TokenType>(ins.a));
+                if(type_name)
+                    out<<" "<<type_name;
+                else
+                    out<<" "<<ins.a;
+                break;
+            }
             case OpCode::CallNative:
             case OpCode::CallFunc:
                 out<<" "<<ins.a<<","<<ins.b;

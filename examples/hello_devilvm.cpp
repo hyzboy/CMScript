@@ -26,7 +26,7 @@ int main()
         return 1;
     }
 
-    const char *script = "func main(){ print(\"hello,world!\"); }";
+    const char *script = "void main(){ print(\"hello,world!\"); }";
 
     if(!module.AddScript(script))
     {

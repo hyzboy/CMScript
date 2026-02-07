@@ -182,17 +182,23 @@ namespace hgl::devil
         {
             case TokenType::Or: return 1;
             case TokenType::And: return 2;
+            case TokenType::BitOr: return 3;
+            case TokenType::BitXor: return 4;
+            case TokenType::Amp: return 5;
             case TokenType::Equal:
-            case TokenType::NotEqual: return 3;
+            case TokenType::NotEqual: return 6;
             case TokenType::LessThan:
             case TokenType::LessThanOrEqual:
             case TokenType::GreaterThan:
-            case TokenType::GreaterThanOrEqual: return 4;
+            case TokenType::GreaterThanOrEqual: return 7;
+            case TokenType::BitShiftLeft:
+            case TokenType::BitShiftRight:
+            case TokenType::BitShiftRightArith: return 8;
             case TokenType::Plus:
-            case TokenType::Minus: return 5;
+            case TokenType::Minus: return 9;
             case TokenType::Star:
             case TokenType::Slash:
-            case TokenType::Percent: return 6;
+            case TokenType::Percent: return 10;
             default: return 0;
         }
     }
@@ -201,6 +207,30 @@ namespace hgl::devil
     {
         std::string name;
         TokenType type=GetToken(name);
+
+        if(type==TokenType::Cast)
+        {
+            SourceLocationInfo loc=BuildSourceLocation(source_start,last_token_start?last_token_start:source_cur);
+            LogWarning("%s",("explicit cast used at "
+                +std::to_string(loc.line)+":"+std::to_string(loc.column)
+                +"\n"+loc.line_text+"\n"+loc.caret_line).c_str());
+
+            std::string tmp;
+            GetToken(TokenType::OpenParanthesis,tmp);
+            std::string type_name;
+            const TokenType target_type=GetToken(type_name);
+            if(!IsTypeToken(target_type))
+            {
+                LogError("%s","cast target must be a type");
+                return nullptr;
+            }
+            GetToken(TokenType::ListSeparator,tmp);
+            std::unique_ptr<Expr> expr=ParseExpression();
+            if(!expr)
+                return nullptr;
+            GetToken(TokenType::CloseParanthesis,tmp);
+            return std::make_unique<CastExpr>(target_type,std::move(expr));
+        }
 
         if(type==TokenType::Identifier)
             return ParseCallOrIdentifier(name);
@@ -226,6 +256,29 @@ namespace hgl::devil
 
         if(type==TokenType::OpenParanthesis)
         {
+            const char *paren_start=last_token_start;
+            const char *saved_cur=source_cur;
+            uint saved_len=source_length;
+
+            std::string tmp;
+            TokenType next=GetToken(tmp);
+            if(IsTypeToken(next) && CheckToken(name)==TokenType::CloseParanthesis)
+            {
+                GetToken(TokenType::CloseParanthesis,name);
+                SourceLocationInfo loc=BuildSourceLocation(source_start,paren_start?paren_start:source_cur);
+                LogWarning("%s",("explicit cast used at "
+                    +std::to_string(loc.line)+":"+std::to_string(loc.column)
+                    +"\n"+loc.line_text+"\n"+loc.caret_line).c_str());
+
+                std::unique_ptr<Expr> expr=ParseUnary();
+                if(!expr)
+                    return nullptr;
+                return std::make_unique<CastExpr>(next,std::move(expr));
+            }
+
+            source_cur=saved_cur;
+            source_length=saved_len;
+
             std::unique_ptr<Expr> expr=ParseExpression();
             GetToken(TokenType::CloseParanthesis,name);
             return expr;
