@@ -21,6 +21,7 @@ namespace hgl::devil
         const char *last_token_start=nullptr;
         uint last_token_length=0;
         TokenType last_token_type=TokenType::End;
+        SourceLocation last_stmt_loc;
 
         asCTokenizer parse;
 
@@ -50,6 +51,7 @@ namespace hgl::devil
 
         bool GetToken(TokenType,std::string &);    //找某一种Token为止
 
+        const SourceLocation &GetLastStatementLocation() const{return last_stmt_loc;}
         bool ParseFunc(Func *);        //解析一个函数
     };
 }//namespace hgl::devil

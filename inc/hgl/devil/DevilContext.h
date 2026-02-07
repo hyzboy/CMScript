@@ -58,6 +58,7 @@ namespace hgl::devil
         bool IsBytecodeEnabled() const{return use_bytecode;}
 
         AstValue ExecuteFunction(Func *func,const char *start_label);
+        AstValue ExecuteFunction(Func *func,const char *start_label,const std::vector<AstValue> &args);
 
         virtual bool Start(Func *,...);
         virtual bool Start(const char *);

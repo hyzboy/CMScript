@@ -152,6 +152,21 @@ namespace hgl::devil
             return false;
         }
 
+        if(const auto *assign=dynamic_cast<const AssignExpr *>(expr))
+        {
+            const int32_t local=GetLocal(assign->GetName());
+            if(local<0)
+            {
+                error="unknown local: "+assign->GetName();
+                return false;
+            }
+            if(!BuildExpr(func,assign->GetValue()))
+                return false;
+            Emit(func,OpCode::StoreLocal,local);
+            Emit(func,OpCode::LoadLocal,local);
+            return true;
+        }
+
         if(const auto *call=dynamic_cast<const CallExpr *>(expr))
         {
             const auto &args=call->GetArgs();
@@ -199,6 +214,11 @@ namespace hgl::devil
 
         if(const auto *var=dynamic_cast<const VarDeclStmt *>(stmt))
         {
+            if(GetLocal(var->GetName())>=0)
+            {
+                error="duplicate local: "+var->GetName();
+                return false;
+            }
             const int32_t local=AddLocal(var->GetName());
             if(var->HasInit())
             {
@@ -542,6 +562,17 @@ namespace hgl::devil
         out_func=BytecodeFunction{};
         out_func.name=func->func_name;
 
+        const auto &params=func->GetParams();
+        for(const auto &param:params)
+        {
+            if(GetLocal(param.name)>=0)
+            {
+                error="duplicate param name: "+param.name;
+                return false;
+            }
+            AddLocal(param.name);
+        }
+
         if(!BuildBlock(out_func,func->GetBody()))
             return false;
 
@@ -573,7 +604,7 @@ namespace hgl::devil
         }
 
         out_func.local_count=static_cast<int32_t>(locals.size());
-        out_func.param_count=0;
+        out_func.param_count=static_cast<int32_t>(params.size());
         return true;
     }
 

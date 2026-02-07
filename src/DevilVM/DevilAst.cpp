@@ -1,5 +1,6 @@
 #include "DevilAst.h"
 #include "DevilCommand.h"
+#include "DevilFunc.h"
 #include <hgl/devil/DevilModule.h>
 #include <hgl/devil/DevilContext.h>
 #include <hgl/devil/DevilValue.h>
@@ -9,6 +10,7 @@ namespace hgl::devil
 {
     namespace
     {
+        constexpr size_t kMaxLoopIterations=1000;
         AstValue MakeDefaultValue(TokenType type)
         {
             switch(type)
@@ -155,6 +157,17 @@ namespace hgl::devil
             ctx.error="native call return type unsupported";
             return AstValue::MakeVoid();
         }
+
+        bool SwitchEqual(const AstValue &lhs,const AstValue &rhs)
+        {
+            if(lhs.type==TokenType::String || rhs.type==TokenType::String)
+                return lhs.ToString()==rhs.ToString();
+
+            if(lhs.IsNumeric() && rhs.IsNumeric())
+                return lhs.ToFloat()==rhs.ToFloat();
+
+            return lhs.ToString()==rhs.ToString();
+        }
     }
 
     AstValue AstValue::MakeVoid(){return AstValue{TokenType::Void,{}};}
@@ -240,6 +253,8 @@ namespace hgl::devil
     ExecResult ExecResult::Normal(){return ExecResult{ExecFlow::Normal,AstValue::MakeVoid(),{}, {}};}
     ExecResult ExecResult::Return(AstValue v){return ExecResult{ExecFlow::Return,std::move(v),{}, {}};}
     ExecResult ExecResult::Goto(const std::string &label){return ExecResult{ExecFlow::Goto,AstValue::MakeVoid(),label,{}};}
+    ExecResult ExecResult::Break(){return ExecResult{ExecFlow::Break,AstValue::MakeVoid(),{}, {}};}
+    ExecResult ExecResult::Continue(){return ExecResult{ExecFlow::Continue,AstValue::MakeVoid(),{}, {}};}
     ExecResult ExecResult::Error(const std::string &message){return ExecResult{ExecFlow::Error,AstValue::MakeVoid(),{},message};}
 
     AstValue IdentifierExpr::Eval(ExecContext &ctx) const
@@ -309,6 +324,11 @@ namespace hgl::devil
                     return AstValue::MakeFloat(lhs.ToFloat()/rhs.ToFloat());
                 ctx.error="'/' expects numeric";
                 return AstValue::MakeVoid();
+            case TokenType::Percent:
+                if(lhs.IsNumeric() && rhs.IsNumeric())
+                    return AstValue::MakeInt(rhs.ToInt()!=0?lhs.ToInt()%rhs.ToInt():0);
+                ctx.error="'%' expects numeric";
+                return AstValue::MakeVoid();
             case TokenType::Equal:
                 if(lhs.IsNumeric() && rhs.IsNumeric())
                     return AstValue::MakeBool(lhs.ToFloat()==rhs.ToFloat());
@@ -329,10 +349,38 @@ namespace hgl::devil
                 return AstValue::MakeBool(lhs.ToBool() && rhs.ToBool());
             case TokenType::Or:
                 return AstValue::MakeBool(lhs.ToBool() || rhs.ToBool());
+            case TokenType::Amp:
+                return AstValue::MakeInt(lhs.ToInt() & rhs.ToInt());
+            case TokenType::BitOr:
+                return AstValue::MakeInt(lhs.ToInt() | rhs.ToInt());
+            case TokenType::BitXor:
+                return AstValue::MakeInt(lhs.ToInt() ^ rhs.ToInt());
+            case TokenType::BitShiftLeft:
+                return AstValue::MakeInt(lhs.ToInt() << rhs.ToInt());
+            case TokenType::BitShiftRight:
+            case TokenType::BitShiftRightArith:
+                return AstValue::MakeInt(lhs.ToInt() >> rhs.ToInt());
             default:
                 ctx.error="unsupported binary operator";
                 return AstValue::MakeVoid();
         }
+    }
+
+    AstValue AssignExpr::Eval(ExecContext &ctx) const
+    {
+        auto it=ctx.locals.find(name);
+        if(it==ctx.locals.end())
+        {
+            ctx.error="unknown variable: "+name;
+            return AstValue::MakeVoid();
+        }
+
+        AstValue rhs=value->Eval(ctx);
+        if(!ctx.error.empty())
+            return AstValue::MakeVoid();
+
+        it->second=CastValue(rhs,it->second.type);
+        return it->second;
     }
 
     AstValue CallExpr::Eval(ExecContext &ctx) const
@@ -363,7 +411,13 @@ namespace hgl::devil
                 ctx.error="missing context for script call";
                 return AstValue::MakeVoid();
             }
-            return ctx.context->ExecuteFunction(func,nullptr);
+            const auto &params=func->GetParams();
+            if(values.size()!=params.size())
+            {
+                ctx.error="script call param count mismatch";
+                return AstValue::MakeVoid();
+            }
+            return ctx.context->ExecuteFunction(func,nullptr,values);
         }
 
         ctx.error="unknown function: "+name;
@@ -447,8 +501,12 @@ namespace hgl::devil
 
     ExecResult WhileStmt::Exec(ExecContext &ctx) const
     {
+        size_t iterations=0;
         while(true)
         {
+            if(++iterations>kMaxLoopIterations)
+                return ExecResult::Error("loop iteration limit exceeded");
+
             AstValue cond_value=cond->Eval(ctx);
             if(!ctx.error.empty())
                 return ExecResult::Error(ctx.error);
@@ -456,39 +514,134 @@ namespace hgl::devil
                 return ExecResult::Normal();
 
             ExecResult res=body->Exec(ctx);
-            if(res.flow!=ExecFlow::Normal)
-                return res;
+            if(res.flow==ExecFlow::Normal)
+                continue;
+            if(res.flow==ExecFlow::Continue)
+                continue;
+            if(res.flow==ExecFlow::Break)
+                return ExecResult::Normal();
+            return res;
         }
     }
 
     ExecResult DoWhileStmt::Exec(ExecContext &ctx) const
     {
-        (void)ctx;
-        return ExecResult::Error("do-while statement is not implemented");
+        size_t iterations=0;
+        while(true)
+        {
+            if(++iterations>kMaxLoopIterations)
+                return ExecResult::Error("loop iteration limit exceeded");
+
+            ExecResult res=body->Exec(ctx);
+            if(res.flow==ExecFlow::Return || res.flow==ExecFlow::Goto || res.flow==ExecFlow::Error)
+                return res;
+            if(res.flow==ExecFlow::Break)
+                return ExecResult::Normal();
+
+            AstValue cond_value=cond->Eval(ctx);
+            if(!ctx.error.empty())
+                return ExecResult::Error(ctx.error);
+            if(!cond_value.ToBool())
+                return ExecResult::Normal();
+        }
     }
 
     ExecResult ForStmt::Exec(ExecContext &ctx) const
     {
-        (void)ctx;
-        return ExecResult::Error("for statement is not implemented");
+        if(init)
+        {
+            ExecResult init_res=init->Exec(ctx);
+            if(init_res.flow!=ExecFlow::Normal)
+                return init_res;
+        }
+
+        size_t iterations=0;
+        while(true)
+        {
+            if(++iterations>kMaxLoopIterations)
+                return ExecResult::Error("loop iteration limit exceeded");
+
+            if(cond)
+            {
+                AstValue cond_value=cond->Eval(ctx);
+                if(!ctx.error.empty())
+                    return ExecResult::Error(ctx.error);
+                if(!cond_value.ToBool())
+                    return ExecResult::Normal();
+            }
+
+            ExecResult res=body->Exec(ctx);
+            if(res.flow==ExecFlow::Return || res.flow==ExecFlow::Goto || res.flow==ExecFlow::Error)
+                return res;
+            if(res.flow==ExecFlow::Break)
+                return ExecResult::Normal();
+
+            if(post)
+            {
+                post->Eval(ctx);
+                if(!ctx.error.empty())
+                    return ExecResult::Error(ctx.error);
+            }
+
+            if(res.flow==ExecFlow::Continue)
+                continue;
+        }
     }
 
     ExecResult SwitchStmt::Exec(ExecContext &ctx) const
     {
-        (void)ctx;
-        return ExecResult::Error("switch statement is not implemented");
+        AstValue switch_value=expr->Eval(ctx);
+        if(!ctx.error.empty())
+            return ExecResult::Error(ctx.error);
+
+        const auto &case_list=cases;
+        size_t match_index=case_list.size();
+        for(size_t i=0;i<case_list.size();++i)
+        {
+            AstValue case_value=case_list[i].expr->Eval(ctx);
+            if(!ctx.error.empty())
+                return ExecResult::Error(ctx.error);
+            if(SwitchEqual(switch_value,case_value))
+            {
+                match_index=i;
+                break;
+            }
+        }
+
+        if(match_index<case_list.size())
+        {
+            for(size_t i=match_index;i<case_list.size();++i)
+            {
+                ExecResult res=case_list[i].block->Exec(ctx);
+                if(res.flow==ExecFlow::Normal)
+                    continue;
+                if(res.flow==ExecFlow::Break)
+                    return ExecResult::Normal();
+                return res;
+            }
+        }
+
+        if(default_block)
+        {
+            ExecResult res=default_block->Exec(ctx);
+            if(res.flow==ExecFlow::Break)
+                return ExecResult::Normal();
+            return res;
+        }
+
+        return ExecResult::Normal();
     }
 
     ExecResult BreakStmt::Exec(ExecContext &ctx) const
     {
         (void)ctx;
-        return ExecResult::Error("break statement is not implemented");
+        return ExecResult::Break();
     }
 
     ExecResult ContinueStmt::Exec(ExecContext &ctx) const
     {
         (void)ctx;
-        return ExecResult::Error("continue statement is not implemented");
+        return ExecResult::Continue();
     }
 
     ExecResult EnumDeclStmt::Exec(ExecContext &ctx) const
@@ -499,9 +652,14 @@ namespace hgl::devil
 
     ExecResult BlockStmt::Exec(ExecContext &ctx) const
     {
-        for(const auto &stmt:statements)
+        for(size_t i=0;i<statements.size();++i)
         {
-            ExecResult res=stmt->Exec(ctx);
+            if(i<statement_locations.size())
+                ctx.current_loc=statement_locations[i];
+            else
+                ctx.current_loc=SourceLocation{};
+
+            ExecResult res=statements[i]->Exec(ctx);
             if(res.flow!=ExecFlow::Normal)
                 return res;
         }

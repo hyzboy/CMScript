@@ -256,6 +256,27 @@ namespace hgl::devil
         if(!left)
             return nullptr;
 
+        if(min_prec<=0)
+        {
+            std::string name;
+            TokenType next=CheckToken(name);
+            if(next==TokenType::Assignment)
+            {
+                auto *ident=dynamic_cast<IdentifierExpr *>(left.get());
+                if(!ident)
+                {
+                    LogError("%s","assignment target must be identifier");
+                    return nullptr;
+                }
+                GetToken(name);
+                std::unique_ptr<Expr> rhs=ParseExpression(0);
+                if(!rhs)
+                    return nullptr;
+                const std::string ident_name=ident->GetName();
+                return std::make_unique<AssignExpr>(ident_name,std::move(rhs));
+            }
+        }
+
         while(true)
         {
             std::string name;
@@ -350,7 +371,9 @@ namespace hgl::devil
         {
             std::vector<std::unique_ptr<Stmt>> stmts;
             stmts.push_back(std::move(then_stmt));
-            then_block=std::make_unique<BlockStmt>(std::move(stmts));
+            std::vector<SourceLocation> locations;
+            locations.push_back(GetLastStatementLocation());
+            then_block=std::make_unique<BlockStmt>(std::move(stmts),std::move(locations));
         }
 
         std::unique_ptr<BlockStmt> else_block;
@@ -365,7 +388,9 @@ namespace hgl::devil
             {
                 std::vector<std::unique_ptr<Stmt>> stmts;
                 stmts.push_back(std::move(else_stmt));
-                else_block=std::make_unique<BlockStmt>(std::move(stmts));
+                std::vector<SourceLocation> locations;
+                locations.push_back(GetLastStatementLocation());
+                else_block=std::make_unique<BlockStmt>(std::move(stmts),std::move(locations));
             }
         }
 
@@ -390,7 +415,9 @@ namespace hgl::devil
         {
             std::vector<std::unique_ptr<Stmt>> stmts;
             stmts.push_back(std::move(body_stmt));
-            body=std::make_unique<BlockStmt>(std::move(stmts));
+            std::vector<SourceLocation> locations;
+            locations.push_back(GetLastStatementLocation());
+            body=std::make_unique<BlockStmt>(std::move(stmts),std::move(locations));
         }
 
         return std::make_unique<WhileStmt>(std::move(cond),std::move(body));
@@ -409,7 +436,9 @@ namespace hgl::devil
         {
             std::vector<std::unique_ptr<Stmt>> stmts;
             stmts.push_back(std::move(body_stmt));
-            body=std::make_unique<BlockStmt>(std::move(stmts));
+            std::vector<SourceLocation> locations;
+            locations.push_back(GetLastStatementLocation());
+            body=std::make_unique<BlockStmt>(std::move(stmts),std::move(locations));
         }
 
         std::string tmp;
@@ -476,7 +505,9 @@ namespace hgl::devil
         {
             std::vector<std::unique_ptr<Stmt>> stmts;
             stmts.push_back(std::move(body_stmt));
-            body=std::make_unique<BlockStmt>(std::move(stmts));
+            std::vector<SourceLocation> locations;
+            locations.push_back(GetLastStatementLocation());
+            body=std::make_unique<BlockStmt>(std::move(stmts),std::move(locations));
         }
 
         return std::make_unique<ForStmt>(std::move(init),std::move(cond),std::move(post),std::move(body));
@@ -511,6 +542,7 @@ namespace hgl::devil
                 GetToken(TokenType::Colon,tmp);
 
                 std::vector<std::unique_ptr<Stmt>> stmts;
+                std::vector<SourceLocation> locations;
                 while(true)
                 {
                     TokenType nt=CheckToken(tmp);
@@ -521,9 +553,10 @@ namespace hgl::devil
                     if(!stmt)
                         return nullptr;
                     stmts.push_back(std::move(stmt));
+                    locations.push_back(GetLastStatementLocation());
                 }
 
-                cases.push_back(SwitchCase{std::move(case_expr),std::make_unique<BlockStmt>(std::move(stmts))});
+                cases.push_back(SwitchCase{std::move(case_expr),std::make_unique<BlockStmt>(std::move(stmts),std::move(locations))});
                 continue;
             }
 
@@ -533,6 +566,7 @@ namespace hgl::devil
                 GetToken(TokenType::Colon,tmp);
 
                 std::vector<std::unique_ptr<Stmt>> stmts;
+                std::vector<SourceLocation> locations;
                 while(true)
                 {
                     TokenType nt=CheckToken(tmp);
@@ -543,9 +577,10 @@ namespace hgl::devil
                     if(!stmt)
                         return nullptr;
                     stmts.push_back(std::move(stmt));
+                    locations.push_back(GetLastStatementLocation());
                 }
 
-                default_block=std::make_unique<BlockStmt>(std::move(stmts));
+                default_block=std::make_unique<BlockStmt>(std::move(stmts),std::move(locations));
                 continue;
             }
 
@@ -583,6 +618,14 @@ namespace hgl::devil
     {
         std::string name;
         TokenType type=CheckToken(name);
+
+        {
+            SourceLocationInfo loc=BuildSourceLocation(source_start,source_cur);
+            last_stmt_loc.line=loc.line;
+            last_stmt_loc.column=loc.column;
+            last_stmt_loc.line_text=loc.line_text;
+            last_stmt_loc.caret_line=loc.caret_line;
+        }
 
         if(type==TokenType::StartStatementBlock)
             return ParseBlock(top_level);
@@ -735,6 +778,7 @@ namespace hgl::devil
             GetToken(tmp);
 
         std::vector<std::unique_ptr<Stmt>> stmts;
+        std::vector<SourceLocation> locations;
 
         while(true)
         {
@@ -751,9 +795,10 @@ namespace hgl::devil
             if(!stmt)
                 return nullptr;
             stmts.push_back(std::move(stmt));
+            locations.push_back(GetLastStatementLocation());
         }
 
-        return std::make_unique<BlockStmt>(std::move(stmts));
+        return std::make_unique<BlockStmt>(std::move(stmts),std::move(locations));
     }
 
     bool Parse::ParseFunc(Func *func)
@@ -761,10 +806,60 @@ namespace hgl::devil
         std::string name;
 
         GetToken(TokenType::OpenParanthesis,name);
+        std::vector<Func::Param> params;
         if(CheckToken(name)!=TokenType::CloseParanthesis)
         {
-            LogError("%s","function parameters are not supported yet");
-            return false;
+            while(true)
+            {
+                std::string type_name;
+                const TokenType type=GetToken(type_name);
+                if(!IsTypeToken(type))
+                {
+                    SourceLocationInfo loc=BuildSourceLocation(source_start,last_token_start?last_token_start:source_cur);
+                    LogError("%s",("function param type expected at "
+                        +std::to_string(loc.line)+":"+std::to_string(loc.column)
+                        +" got="+std::string(asGetTokenDefinition(type))
+                        +" intro='"+type_name+"'\n"
+                        +loc.line_text+"\n"+loc.caret_line).c_str());
+                    return false;
+                }
+
+                std::string param_name;
+                if(GetToken(param_name)!=TokenType::Identifier)
+                {
+                    SourceLocationInfo loc=BuildSourceLocation(source_start,last_token_start?last_token_start:source_cur);
+                    LogError("%s",("function param name expected at "
+                        +std::to_string(loc.line)+":"+std::to_string(loc.column)
+                        +" intro='"+param_name+"'\n"
+                        +loc.line_text+"\n"+loc.caret_line).c_str());
+                    return false;
+                }
+
+                bool dup=false;
+                for(const auto &p:params)
+                {
+                    if(p.name==param_name)
+                    {
+                        dup=true;
+                        break;
+                    }
+                }
+                if(dup)
+                {
+                    LogError("%s",("duplicate function param: "+param_name).c_str());
+                    return false;
+                }
+
+                params.push_back(Func::Param{type,param_name});
+
+                TokenType sep=CheckToken(name);
+                if(sep==TokenType::ListSeparator)
+                {
+                    GetToken(name);
+                    continue;
+                }
+                break;
+            }
         }
         GetToken(TokenType::CloseParanthesis,name);
 
@@ -789,6 +884,7 @@ namespace hgl::devil
             labels.emplace(label,i);
         }
 
+        func->SetParams(std::move(params));
         func->SetBody(std::move(body),std::move(labels));
         return true;
     }

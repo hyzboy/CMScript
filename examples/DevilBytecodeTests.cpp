@@ -16,14 +16,15 @@ int main(int,char **)
         "func main() { "
         "int a=1; int b=2; "
         "if(a<b){ b=b+1; } else { b=b-1; } "
-        "return b; "
+        "return add(a,b); "
         "} "
         "func looptest() { "
         "int x=0; "
         "do { x=x+1; } while(x<3); "
         "switch(x){ case 3: x=7; break; default: x=9; } "
         "return x; "
-        "}";
+        "} "
+        "func add(int x,int y){ return x+y; }";
 
     if(!module.AddScript(script,-1))
     {
@@ -33,7 +34,7 @@ int main(int,char **)
 
     bc_module.SetHostModule(&module);
 
-    const char *funcs[]={"main","looptest"};
+    const char *funcs[]={"main","looptest","add"};
     for(const char *name:funcs)
     {
         Func *func=module.GetScriptFunc(name);
@@ -58,6 +59,15 @@ int main(int,char **)
     }
 
     std::cout<<disasm;
+
+    BytecodeVM vm(&bc_module);
+    if(!vm.Execute("main",{}))
+    {
+        std::cout<<"bytecode test: execute failed "<<vm.GetError()<<std::endl;
+        return -1;
+    }
+
+    std::cout<<"bytecode test: main returned "<<vm.GetLastResult().ToString()<<std::endl;
 
     return 0;
 }

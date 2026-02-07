@@ -4,11 +4,46 @@
 
 namespace hgl::devil
 {
+    namespace
+    {
+        AstValue CastToType(const AstValue &value,TokenType type)
+        {
+            switch(type)
+            {
+                case TokenType::Bool:   return AstValue::MakeBool(value.ToBool());
+                case TokenType::Int:
+                case TokenType::Int8:
+                case TokenType::Int16:  return AstValue::MakeInt(value.ToInt());
+                case TokenType::UInt:
+                case TokenType::UInt8:
+                case TokenType::UInt16: return AstValue::MakeUInt(value.ToUInt());
+                case TokenType::Float:  return AstValue::MakeFloat(value.ToFloat());
+                case TokenType::String: return AstValue::MakeString(value.ToString());
+                default:                return AstValue::MakeVoid();
+            }
+        }
+    }
+
     AstValue Context::ExecuteFunction(Func *func,const char *start_label)
+    {
+        const std::vector<AstValue> empty_args;
+        return ExecuteFunction(func,start_label,empty_args);
+    }
+
+    AstValue Context::ExecuteFunction(Func *func,const char *start_label,const std::vector<AstValue> &args)
     {
         if(!func || !module)
         {
             LogError("%s","ExecuteFunction missing func/module");
+            return AstValue::MakeVoid();
+        }
+
+        const auto &params=func->GetParams();
+        if(args.size()!=params.size())
+        {
+            LogError("%s",("param count mismatch: func="+func->func_name
+                +" expected="+std::to_string(params.size())
+                +" got="+std::to_string(args.size())).c_str());
             return AstValue::MakeVoid();
         }
 
@@ -22,7 +57,7 @@ namespace hgl::devil
                 current_index=-1;
                 State=dvsRun;
 
-                if(bytecode_vm.Execute(func->func_name,{}))
+                if(bytecode_vm.Execute(func->func_name,args))
                 {
                     State=dvsStop;
                     return bytecode_vm.GetLastResult();
@@ -44,6 +79,8 @@ namespace hgl::devil
         ctx.module=module;
         ctx.context=this;
         ctx.func=func;
+        for(size_t i=0;i<params.size();++i)
+            ctx.locals.emplace(params[i].name,CastToType(args[i],params[i].type));
 
         size_t index=0;
         if(start_label && *start_label)
@@ -87,7 +124,7 @@ namespace hgl::devil
                 const auto it=labels.find(res.label);
                 if(it==labels.end())
                 {
-                    LogError("%s",("label not found: "+res.label).c_str());
+                    LogError("%s",("label not found: "+res.label+" func="+current_func).c_str());
                     State=dvsStop;
                     current_index=-1;
                     return AstValue::MakeVoid();
@@ -96,7 +133,25 @@ namespace hgl::devil
                 continue;
             }
 
-            LogError("%s",res.error.c_str());
+            if(res.flow==ExecFlow::Break || res.flow==ExecFlow::Continue)
+            {
+                LogError("%s",("exec failed: func="+current_func
+                    +" index="+std::to_string(current_index)
+                    +(ctx.current_loc.line>0?" line="+std::to_string(ctx.current_loc.line):std::string())
+                    +(ctx.current_loc.column>0?" column="+std::to_string(ctx.current_loc.column):std::string())
+                    +(!ctx.current_loc.line_text.empty()?"\n"+ctx.current_loc.line_text+"\n"+ctx.current_loc.caret_line:std::string())
+                    +" error=break/continue used outside loop").c_str());
+                State=dvsStop;
+                current_index=-1;
+                return AstValue::MakeVoid();
+            }
+
+            LogError("%s",("exec failed: func="+current_func
+                +" index="+std::to_string(current_index)
+                +(ctx.current_loc.line>0?" line="+std::to_string(ctx.current_loc.line):std::string())
+                +(ctx.current_loc.column>0?" column="+std::to_string(ctx.current_loc.column):std::string())
+                +(!ctx.current_loc.line_text.empty()?"\n"+ctx.current_loc.line_text+"\n"+ctx.current_loc.caret_line:std::string())
+                +" error="+res.error).c_str());
             State=dvsStop;
             current_index=-1;
             return AstValue::MakeVoid();

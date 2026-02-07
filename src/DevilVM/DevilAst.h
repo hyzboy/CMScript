@@ -16,12 +16,21 @@ namespace hgl::devil
     class Context;
     class Func;
 
+    struct SourceLocation
+    {
+        int line=0;
+        int column=0;
+        std::string line_text;
+        std::string caret_line;
+    };
+
     struct ExecContext
     {
         Module *module=nullptr;
         Context *context=nullptr;
         Func *func=nullptr;
         std::unordered_map<std::string,AstValue> locals;
+        SourceLocation current_loc;
         std::string error;
     };
 
@@ -30,6 +39,8 @@ namespace hgl::devil
         Normal,
         Return,
         Goto,
+        Break,
+        Continue,
         Error
     };
 
@@ -43,6 +54,8 @@ namespace hgl::devil
         static ExecResult Normal();
         static ExecResult Return(AstValue v);
         static ExecResult Goto(const std::string &label);
+        static ExecResult Break();
+        static ExecResult Continue();
         static ExecResult Error(const std::string &message);
     };
 
@@ -105,6 +118,19 @@ namespace hgl::devil
         TokenType GetOp() const{return op;}
         const Expr *GetLeft() const{return left.get();}
         const Expr *GetRight() const{return right.get();}
+        AstValue Eval(ExecContext &) const override;
+    };
+
+    class AssignExpr final:public Expr
+    {
+        std::string name;
+        std::unique_ptr<Expr> value;
+
+    public:
+        AssignExpr(std::string n,std::unique_ptr<Expr> v)
+            : name(std::move(n)), value(std::move(v)){}
+        const std::string &GetName() const{return name;}
+        const Expr *GetValue() const{return value.get();}
         AstValue Eval(ExecContext &) const override;
     };
 
@@ -293,12 +319,17 @@ namespace hgl::devil
     class BlockStmt final:public Stmt
     {
         std::vector<std::unique_ptr<Stmt>> statements;
+        std::vector<SourceLocation> statement_locations;
 
     public:
         explicit BlockStmt(std::vector<std::unique_ptr<Stmt>> stmts)
             : statements(std::move(stmts)){}
 
+        BlockStmt(std::vector<std::unique_ptr<Stmt>> stmts,std::vector<SourceLocation> locations)
+            : statements(std::move(stmts)), statement_locations(std::move(locations)){}
+
         const std::vector<std::unique_ptr<Stmt>> &GetStatements() const{return statements;}
+        const std::vector<SourceLocation> &GetLocations() const{return statement_locations;}
         ExecResult Exec(ExecContext &) const override;
     };
 }
