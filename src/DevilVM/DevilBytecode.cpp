@@ -1,6 +1,7 @@
 #include <hgl/devil/DevilBytecode.h>
 #include <hgl/devil/DevilModule.h>
 #include "DevilCommand.h"
+#include <cmath>
 
 namespace hgl::devil
 {
@@ -126,6 +127,86 @@ namespace hgl::devil
             stack.pop_back();
             ok=true;
             return v;
+        }
+
+        AstValue BinaryNumeric(const AstValue &lhs,const AstValue &rhs,OpCode op)
+        {
+            const bool use_float=(lhs.type==TokenType::Float || rhs.type==TokenType::Float);
+            if(use_float)
+            {
+                const float a=lhs.ToFloat();
+                const float b=rhs.ToFloat();
+                switch(op)
+                {
+                    case OpCode::Add: return AstValue::MakeFloat(a+b);
+                    case OpCode::Sub: return AstValue::MakeFloat(a-b);
+                    case OpCode::Mul: return AstValue::MakeFloat(a*b);
+                    case OpCode::Div: return AstValue::MakeFloat(b!=0.0f?a/b:0.0f);
+                    case OpCode::Mod: return AstValue::MakeFloat(std::fmod(a,b));
+                    default: return AstValue::MakeFloat(0.0f);
+                }
+            }
+
+            const int ia=lhs.ToInt();
+            const int ib=rhs.ToInt();
+            switch(op)
+            {
+                case OpCode::Add: return AstValue::MakeInt(ia+ib);
+                case OpCode::Sub: return AstValue::MakeInt(ia-ib);
+                case OpCode::Mul: return AstValue::MakeInt(ia*ib);
+                case OpCode::Div: return AstValue::MakeInt(ib?ia/ib:0);
+                case OpCode::Mod: return AstValue::MakeInt(ib?ia%ib:0);
+                default: return AstValue::MakeInt(0);
+            }
+        }
+
+        AstValue CompareValues(const AstValue &lhs,const AstValue &rhs,OpCode op)
+        {
+            if(lhs.type==TokenType::String || rhs.type==TokenType::String)
+            {
+                const std::string a=lhs.ToString();
+                const std::string b=rhs.ToString();
+                switch(op)
+                {
+                    case OpCode::Eq: return AstValue::MakeBool(a==b);
+                    case OpCode::Ne: return AstValue::MakeBool(a!=b);
+                    case OpCode::Lt: return AstValue::MakeBool(a<b);
+                    case OpCode::Le: return AstValue::MakeBool(a<=b);
+                    case OpCode::Gt: return AstValue::MakeBool(a>b);
+                    case OpCode::Ge: return AstValue::MakeBool(a>=b);
+                    default: return AstValue::MakeBool(false);
+                }
+            }
+
+            const bool use_float=(lhs.type==TokenType::Float || rhs.type==TokenType::Float);
+            if(use_float)
+            {
+                const float a=lhs.ToFloat();
+                const float b=rhs.ToFloat();
+                switch(op)
+                {
+                    case OpCode::Eq: return AstValue::MakeBool(a==b);
+                    case OpCode::Ne: return AstValue::MakeBool(a!=b);
+                    case OpCode::Lt: return AstValue::MakeBool(a<b);
+                    case OpCode::Le: return AstValue::MakeBool(a<=b);
+                    case OpCode::Gt: return AstValue::MakeBool(a>b);
+                    case OpCode::Ge: return AstValue::MakeBool(a>=b);
+                    default: return AstValue::MakeBool(false);
+                }
+            }
+
+            const int ia=lhs.ToInt();
+            const int ib=rhs.ToInt();
+            switch(op)
+            {
+                case OpCode::Eq: return AstValue::MakeBool(ia==ib);
+                case OpCode::Ne: return AstValue::MakeBool(ia!=ib);
+                case OpCode::Lt: return AstValue::MakeBool(ia<ib);
+                case OpCode::Le: return AstValue::MakeBool(ia<=ib);
+                case OpCode::Gt: return AstValue::MakeBool(ia>ib);
+                case OpCode::Ge: return AstValue::MakeBool(ia>=ib);
+                default: return AstValue::MakeBool(false);
+            }
         }
     }
 
@@ -283,6 +364,157 @@ namespace hgl::devil
                     return false;
                 }
                 value_stack[index]=std::move(v);
+                return true;
+            }
+
+            case OpCode::Add:
+            case OpCode::Sub:
+            case OpCode::Mul:
+            case OpCode::Div:
+            case OpCode::Mod:
+            {
+                bool ok=false;
+                AstValue rhs=PopValue(value_stack,ok);
+                if(!ok)
+                {
+                    error="bytecode binary op underflow";
+                    return false;
+                }
+                AstValue lhs=PopValue(value_stack,ok);
+                if(!ok)
+                {
+                    error="bytecode binary op underflow";
+                    return false;
+                }
+
+                if(ins.op==OpCode::Add && (lhs.type==TokenType::String || rhs.type==TokenType::String))
+                {
+                    value_stack.push_back(AstValue::MakeString(lhs.ToString()+rhs.ToString()));
+                    return true;
+                }
+
+                value_stack.push_back(BinaryNumeric(lhs,rhs,ins.op));
+                return true;
+            }
+
+            case OpCode::Neg:
+            {
+                bool ok=false;
+                AstValue v=PopValue(value_stack,ok);
+                if(!ok)
+                {
+                    error="bytecode neg underflow";
+                    return false;
+                }
+                if(v.type==TokenType::Float)
+                    value_stack.push_back(AstValue::MakeFloat(-v.ToFloat()));
+                else
+                    value_stack.push_back(AstValue::MakeInt(-v.ToInt()));
+                return true;
+            }
+
+            case OpCode::Not:
+            {
+                bool ok=false;
+                AstValue v=PopValue(value_stack,ok);
+                if(!ok)
+                {
+                    error="bytecode not underflow";
+                    return false;
+                }
+                value_stack.push_back(AstValue::MakeBool(!v.ToBool()));
+                return true;
+            }
+
+            case OpCode::BitNot:
+            {
+                bool ok=false;
+                AstValue v=PopValue(value_stack,ok);
+                if(!ok)
+                {
+                    error="bytecode bitnot underflow";
+                    return false;
+                }
+                value_stack.push_back(AstValue::MakeInt(~v.ToInt()));
+                return true;
+            }
+
+            case OpCode::BitAnd:
+            case OpCode::BitOr:
+            case OpCode::BitXor:
+            case OpCode::Shl:
+            case OpCode::Shr:
+            {
+                bool ok=false;
+                AstValue rhs=PopValue(value_stack,ok);
+                if(!ok)
+                {
+                    error="bytecode bit op underflow";
+                    return false;
+                }
+                AstValue lhs=PopValue(value_stack,ok);
+                if(!ok)
+                {
+                    error="bytecode bit op underflow";
+                    return false;
+                }
+                const int a=lhs.ToInt();
+                const int b=rhs.ToInt();
+                switch(ins.op)
+                {
+                    case OpCode::BitAnd: value_stack.push_back(AstValue::MakeInt(a & b)); break;
+                    case OpCode::BitOr: value_stack.push_back(AstValue::MakeInt(a | b)); break;
+                    case OpCode::BitXor: value_stack.push_back(AstValue::MakeInt(a ^ b)); break;
+                    case OpCode::Shl: value_stack.push_back(AstValue::MakeInt(a << b)); break;
+                    case OpCode::Shr: value_stack.push_back(AstValue::MakeInt(a >> b)); break;
+                    default: break;
+                }
+                return true;
+            }
+
+            case OpCode::Eq:
+            case OpCode::Ne:
+            case OpCode::Lt:
+            case OpCode::Le:
+            case OpCode::Gt:
+            case OpCode::Ge:
+            {
+                bool ok=false;
+                AstValue rhs=PopValue(value_stack,ok);
+                if(!ok)
+                {
+                    error="bytecode compare underflow";
+                    return false;
+                }
+                AstValue lhs=PopValue(value_stack,ok);
+                if(!ok)
+                {
+                    error="bytecode compare underflow";
+                    return false;
+                }
+                value_stack.push_back(CompareValues(lhs,rhs,ins.op));
+                return true;
+            }
+
+            case OpCode::And:
+            case OpCode::Or:
+            {
+                bool ok=false;
+                AstValue rhs=PopValue(value_stack,ok);
+                if(!ok)
+                {
+                    error="bytecode logical op underflow";
+                    return false;
+                }
+                AstValue lhs=PopValue(value_stack,ok);
+                if(!ok)
+                {
+                    error="bytecode logical op underflow";
+                    return false;
+                }
+                const bool a=lhs.ToBool();
+                const bool b=rhs.ToBool();
+                value_stack.push_back(AstValue::MakeBool(ins.op==OpCode::And ? (a && b) : (a || b)));
                 return true;
             }
 

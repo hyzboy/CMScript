@@ -66,6 +66,7 @@ namespace hgl::devil
 
     public:
         explicit LiteralExpr(AstValue v):value(std::move(v)){}
+        const AstValue &GetValue() const{return value;}
         AstValue Eval(ExecContext &) const override{return value;}
     };
 
@@ -87,6 +88,8 @@ namespace hgl::devil
     public:
         UnaryExpr(TokenType o,std::unique_ptr<Expr> e)
             : op(o), expr(std::move(e)){}
+        TokenType GetOp() const{return op;}
+        const Expr *GetExpr() const{return expr.get();}
         AstValue Eval(ExecContext &) const override;
     };
 
@@ -99,6 +102,9 @@ namespace hgl::devil
     public:
         BinaryExpr(TokenType o,std::unique_ptr<Expr> l,std::unique_ptr<Expr> r)
             : op(o), left(std::move(l)), right(std::move(r)){}
+        TokenType GetOp() const{return op;}
+        const Expr *GetLeft() const{return left.get();}
+        const Expr *GetRight() const{return right.get();}
         AstValue Eval(ExecContext &) const override;
     };
 
@@ -111,6 +117,7 @@ namespace hgl::devil
         CallExpr(std::string n,std::vector<std::unique_ptr<Expr>> a)
             : name(std::move(n)), args(std::move(a)){}
         const std::string &GetName() const{return name;}
+        const std::vector<std::unique_ptr<Expr>> &GetArgs() const{return args;}
         AstValue Eval(ExecContext &) const override;
     };
 
@@ -125,6 +132,9 @@ namespace hgl::devil
     public:
         VarDeclStmt(TokenType t,std::string n,std::unique_ptr<Expr> i)
             : type(t), name(std::move(n)), init(std::move(i)){}
+        const std::string &GetName() const{return name;}
+        const Expr *GetInit() const{return init.get();}
+        bool HasInit() const{return static_cast<bool>(init);}
         ExecResult Exec(ExecContext &) const override;
     };
 
@@ -136,6 +146,8 @@ namespace hgl::devil
     public:
         AssignStmt(std::string n,std::unique_ptr<Expr> v)
             : name(std::move(n)), value(std::move(v)){}
+        const std::string &GetName() const{return name;}
+        const Expr *GetValue() const{return value.get();}
         ExecResult Exec(ExecContext &) const override;
     };
 
@@ -145,6 +157,7 @@ namespace hgl::devil
 
     public:
         explicit ExprStmt(std::unique_ptr<Expr> e):expr(std::move(e)){}
+        const Expr *GetExpr() const{return expr.get();}
         ExecResult Exec(ExecContext &) const override;
     };
 
@@ -154,6 +167,8 @@ namespace hgl::devil
 
     public:
         explicit ReturnStmt(std::unique_ptr<Expr> e):expr(std::move(e)){}
+        const Expr *GetExpr() const{return expr.get();}
+        bool HasExpr() const{return static_cast<bool>(expr);}
         ExecResult Exec(ExecContext &) const override;
     };
 
@@ -186,6 +201,9 @@ namespace hgl::devil
     public:
         IfStmt(std::unique_ptr<Expr> c,std::unique_ptr<BlockStmt> t,std::unique_ptr<BlockStmt> e)
             : cond(std::move(c)), then_block(std::move(t)), else_block(std::move(e)){}
+        const Expr *GetCond() const{return cond.get();}
+        const BlockStmt *GetThen() const{return then_block.get();}
+        const BlockStmt *GetElse() const{return else_block.get();}
         ExecResult Exec(ExecContext &) const override;
     };
 
@@ -197,6 +215,8 @@ namespace hgl::devil
     public:
         WhileStmt(std::unique_ptr<Expr> c,std::unique_ptr<BlockStmt> b)
             : cond(std::move(c)), body(std::move(b)){}
+        const Expr *GetCond() const{return cond.get();}
+        const BlockStmt *GetBody() const{return body.get();}
         ExecResult Exec(ExecContext &) const override;
     };
 
