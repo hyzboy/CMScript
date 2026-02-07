@@ -73,6 +73,7 @@ namespace hgl::devil
 
         bool AddFunction(BytecodeFunction func);
         BytecodeFunction *GetFunction(const std::string &name);
+        const ankerl::unordered_dense::map<std::string,BytecodeFunction> &GetFunctions() const{return functions;}
     };
 
     struct Frame
@@ -104,4 +105,9 @@ namespace hgl::devil
         bool SaveState(std::vector<uint8_t> &) const;
         bool LoadState(const std::vector<uint8_t> &);
     };
+
+    const char *OpCodeToString(OpCode op);
+    std::string DisassembleInstruction(const BytecodeFunction &func,size_t index);
+    std::string DisassembleFunction(const BytecodeFunction &func);
+    std::string DisassembleModule(const BytecodeModule &module);
 }
