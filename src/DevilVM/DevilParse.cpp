@@ -2,6 +2,7 @@
 #include "DevilFunc.h"
 #include <hgl/devil/DevilModule.h>
 #include <cstring>
+#include <unordered_set>
 #include <ankerl/unordered_dense.h>
 
 namespace hgl::devil
@@ -408,7 +409,7 @@ namespace hgl::devil
                 return nullptr;
             }
 
-            return std::make_unique<LiteralExpr>(it->second);
+            return std::make_unique<EnumValueExpr>(name,value_name,it->second);
         }
 
         if(next!=TokenType::OpenParanthesis)
@@ -695,6 +696,60 @@ namespace hgl::devil
 
             LogError("%s","ParseSwitch unexpected token");
             return nullptr;
+        }
+
+        if(!default_block)
+        {
+            std::string enum_name;
+            std::unordered_set<std::string> case_values;
+            bool enum_only=true;
+
+            for(const auto &item:cases)
+            {
+                const auto *enum_value=dynamic_cast<const EnumValueExpr *>(item.expr.get());
+                if(!enum_value)
+                {
+                    enum_only=false;
+                    break;
+                }
+
+                if(enum_name.empty())
+                    enum_name=enum_value->GetEnumName();
+                else if(enum_name!=enum_value->GetEnumName())
+                {
+                    enum_only=false;
+                    break;
+                }
+
+                case_values.insert(enum_value->GetValueName());
+            }
+
+            if(enum_only && module && !enum_name.empty())
+            {
+                const ScriptEnum *enum_def=module->GetScriptEnum(enum_name);
+                if(enum_def)
+                {
+                    std::vector<std::string> missing;
+                    missing.reserve(enum_def->values.size());
+                    for(const auto &kv:enum_def->values)
+                    {
+                        if(case_values.find(kv.first)==case_values.end())
+                            missing.push_back(kv.first);
+                    }
+
+                    if(!missing.empty())
+                    {
+                        std::string message="switch missing enum cases for "+enum_name+": ";
+                        for(size_t i=0;i<missing.size();++i)
+                        {
+                            if(i>0)
+                                message.append(",");
+                            message.append(enum_name).append("::").append(missing[i]);
+                        }
+                        LogWarning("%s",message.c_str());
+                    }
+                }
+            }
         }
 
         return std::make_unique<SwitchStmt>(std::move(expr),std::move(cases),std::move(default_block));

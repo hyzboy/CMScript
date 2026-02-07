@@ -365,6 +365,13 @@ namespace hgl::devil
             return true;
         }
 
+        if(const auto *enum_value=dynamic_cast<const EnumValueExpr *>(expr))
+        {
+            const int32_t idx=AddConst(func,enum_value->GetValue());
+            Emit(func,OpCode::PushConst,idx);
+            return true;
+        }
+
         if(const auto *ident=dynamic_cast<const IdentifierExpr *>(expr))
         {
             const int32_t local=GetLocal(ident->GetName());

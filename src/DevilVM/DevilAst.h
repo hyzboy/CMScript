@@ -83,6 +83,21 @@ namespace hgl::devil
         AstValue Eval(ExecContext &) const override{return value;}
     };
 
+    class EnumValueExpr final:public Expr
+    {
+        std::string enum_name;
+        std::string value_name;
+        AstValue value;
+
+    public:
+        EnumValueExpr(std::string e,std::string v,AstValue av)
+            : enum_name(std::move(e)), value_name(std::move(v)), value(std::move(av)){}
+        const std::string &GetEnumName() const{return enum_name;}
+        const std::string &GetValueName() const{return value_name;}
+        const AstValue &GetValue() const{return value;}
+        AstValue Eval(ExecContext &) const override{return value;}
+    };
+
     class IdentifierExpr final:public Expr
     {
         std::string name;
