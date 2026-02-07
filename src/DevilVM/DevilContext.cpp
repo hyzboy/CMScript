@@ -12,6 +12,27 @@ namespace hgl::devil
             return AstValue::MakeVoid();
         }
 
+        if(use_bytecode && module->IsBytecodeEnabled() && (!start_label || !*start_label))
+        {
+            BytecodeModule *bc_module=module->GetBytecodeModule();
+            if(bc_module)
+            {
+                bytecode_vm.SetModule(bc_module);
+                current_func=func->func_name;
+                current_index=-1;
+                State=dvsRun;
+
+                if(bytecode_vm.Execute(func->func_name,{}))
+                {
+                    State=dvsStop;
+                    return bytecode_vm.GetLastResult();
+                }
+
+                LogError("%s",("bytecode execute failed: "+bytecode_vm.GetError()).c_str());
+                State=dvsStop;
+            }
+        }
+
         const BlockStmt *body=func->GetBody();
         if(!body)
         {

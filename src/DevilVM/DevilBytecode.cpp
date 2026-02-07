@@ -116,6 +116,11 @@ namespace hgl::devil
         return true;
     }
 
+    void BytecodeModule::Clear()
+    {
+        functions.clear();
+    }
+
     BytecodeFunction *BytecodeModule::GetFunction(const std::string &name)
     {
         const auto it=functions.find(name);

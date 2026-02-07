@@ -73,6 +73,7 @@ namespace hgl::devil
 
         bool AddFunction(BytecodeFunction func);
         BytecodeFunction *GetFunction(const std::string &name);
+        void Clear();
         const ankerl::unordered_dense::map<std::string,BytecodeFunction> &GetFunctions() const{return functions;}
     };
 

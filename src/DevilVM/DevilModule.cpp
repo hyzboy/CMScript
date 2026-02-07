@@ -1,6 +1,7 @@
 ﻿#include <hgl/devil/DevilModule.h>
 #include "DevilCommand.h"
 #include "DevilParse.h"
+#include "DevilBytecodeBuilder.h"
 #include "DevilFunc.h"
 #include <cstring>
 
@@ -179,6 +180,8 @@ namespace devil
         Parse parse(this,source,source_length);
         std::string name;
 
+        bytecode_module.SetHostModule(this);
+
         while(true)
         {
             TokenType type=parse.GetToken(name);               //不停的通过func关键字查找函数
@@ -196,6 +199,16 @@ namespace devil
                     if(parse.ParseFunc(func))                   //解析函数
                     {
                         script_func.emplace(name,func);
+
+                        if(use_bytecode)
+                        {
+                            BytecodeBuilder builder(this,&bytecode_module);
+                            if(!builder.BuildAndAdd(func))
+                            {
+                                LogError("%s",("编译字节码失败: "+builder.GetError()).c_str());
+                                return(false);
+                            }
+                        }
 
                         LogInfo("%s","}\n");
                     }
@@ -231,10 +244,29 @@ namespace devil
         return(true);
     }
 
+    bool Module::BuildBytecode()
+    {
+        bytecode_module.SetHostModule(this);
+        bytecode_module.Clear();
+
+        BytecodeBuilder builder(this,&bytecode_module);
+        for(const auto &kv:script_func)
+        {
+            if(!builder.BuildAndAdd(kv.second))
+            {
+                LogError("%s",("编译字节码失败: "+builder.GetError()).c_str());
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     void Module::Clear()
     {
         script_func.clear();
         string_list.clear();
+        bytecode_module.Clear();
     }
 
 #ifdef _DEBUG

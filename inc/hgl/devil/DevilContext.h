@@ -6,6 +6,7 @@
 #include <vector>
 #include <hgl/log/Log.h>
 #include <hgl/devil/DevilValue.h>
+#include <hgl/devil/DevilBytecode.h>
 
 namespace hgl::devil
 {
@@ -32,6 +33,8 @@ namespace hgl::devil
         Module *module=nullptr;
         std::string current_func;
         int current_index=-1;
+        BytecodeVM bytecode_vm;
+        bool use_bytecode=true;
 
     protected:
 
@@ -50,6 +53,9 @@ namespace hgl::devil
         {
             module=dm;
         }
+
+        void SetUseBytecode(bool value){use_bytecode=value;}
+        bool IsBytecodeEnabled() const{return use_bytecode;}
 
         AstValue ExecuteFunction(Func *func,const char *start_label);
 

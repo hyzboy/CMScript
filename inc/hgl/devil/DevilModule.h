@@ -9,6 +9,7 @@
 #include <ankerl/unordered_dense.h>
 #include <hgl/log/Log.h>
 #include <hgl/platform/compiler/EventFunc.h>
+#include <hgl/devil/DevilBytecode.h>
 
 namespace hgl::devil
 {
@@ -74,6 +75,8 @@ namespace hgl::devil
         ankerl::unordered_dense::map<std::string,FuncMap *>       func_map;       //函数映射表
         ankerl::unordered_dense::map<std::string,Func *>          script_func;    //脚本函数表
         ankerl::unordered_dense::map<std::string,EnumDef *>       enum_map;       //枚举映射表
+        BytecodeModule                                            bytecode_module;
+        bool                                                      use_bytecode=true;
 
     private:
 
@@ -95,6 +98,9 @@ namespace hgl::devil
         Func *GetScriptFunc(const std::string &);
         FuncMap *GetFuncMap(const std::string &);
         PropertyMap *GetPropertyMap(const std::string &);
+        BytecodeModule *GetBytecodeModule(){return &bytecode_module;}
+        void SetUseBytecode(bool value){use_bytecode=value;}
+        bool IsBytecodeEnabled() const{return use_bytecode;}
 
         virtual bool MapProperty(const char *,void *);                         ///<映射属性(真实变量的映射，在整个模块中全局有效)
         template<typename R,typename... Args>
@@ -128,6 +134,7 @@ namespace hgl::devil
         }
 
         virtual bool AddScript(const char *,int=-1);                           ///<添加脚本并编译
+        virtual bool BuildBytecode();                                          ///<从现有脚本函数生成字节码
 
         virtual bool AddEnum(const char *,EnumDef *);
 
