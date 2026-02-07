@@ -810,22 +810,22 @@ namespace hgl::devil
         else
         if(type==ttTrue||type==ttFalse) //布尔型
         {
-            dcii=new Bool(module,name.c_str());
+            dcii=new ValueBool(module,name.c_str());
         }
         else
         if(type==ttIntConstant)         //整数
         {
-            dcii=new UInteger(module,name.c_str());
+            dcii=new ValueUInteger(module,name.c_str());
         }
         else
         if(type==ttFloatConstant)       //浮点数
         {
-            dcii=new Float(module,name.c_str());
+            dcii=new ValueFloat(module,name.c_str());
         }
         else
         if(type==ttDoubleConstant)      //浮点数
         {
-            dcii=new Double(module,name.c_str());
+            dcii=new ValueDouble(module,name.c_str());
         }
         else
         if(type==ttMinus)               // -号
@@ -837,17 +837,17 @@ namespace hgl::devil
 
             if(type==ttIntConstant)         //整数
             {
-                dcii=new Integer(module,str.c_str());
+                dcii=new ValueInteger(module,str.c_str());
             }
             else
             if(type==ttFloatConstant)       //浮点数
             {
-                dcii=new Float(module,str.c_str());
+                dcii=new ValueFloat(module,str.c_str());
             }
             else
             if(type==ttDoubleConstant)      //浮点数
             {
-                dcii=new Double(module,str.c_str());
+                dcii=new ValueDouble(module,str.c_str());
             }
         }
 

@@ -196,13 +196,13 @@ namespace devil
                                             }   \
                                         };
 
-    DEVIL_VALUE(Integer,   int,    ttInt,      stoi);              //真实数值,有符号整数
-    DEVIL_VALUE(UInteger,  uint,   ttUInt,     stou);              //真实数值,无符号整数
-    DEVIL_VALUE(Float,     float,  ttFloat,    stof);              //真实数值,浮点数
-    DEVIL_VALUE(Bool,      bool,   ttBool ,    stob);              //真实数值,布尔型
-    DEVIL_VALUE(Int64,     int64,  ttInt64,    stoi);
-    DEVIL_VALUE(UInt64,    uint64, ttUInt64,   stou);
-    DEVIL_VALUE(Double,    double, ttDouble,   stof);
+    DEVIL_VALUE(ValueInteger,   int,    ttInt,      stoi);              //真实数值,有符号整数
+    DEVIL_VALUE(ValueUInteger,  uint,   ttUInt,     stou);              //真实数值,无符号整数
+    DEVIL_VALUE(ValueFloat,     float,  ttFloat,    stof);              //真实数值,浮点数
+    DEVIL_VALUE(ValueBool,      bool,   ttBool ,    stob);              //真实数值,布尔型
+    DEVIL_VALUE(ValueInt64,     int64,  ttInt64,    stoi);
+    DEVIL_VALUE(ValueUInt64,    uint64, ttUInt64,   stou);
+    DEVIL_VALUE(ValueDouble,    double, ttDouble,   stof);
 
     #undef DEVIL_VALUE
 
