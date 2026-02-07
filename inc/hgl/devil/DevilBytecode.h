@@ -59,8 +59,10 @@ namespace hgl::devil
         std::string name;
         std::vector<Instruction> code;
         std::vector<AstValue> constants;
+        std::vector<int32_t> const_ints;
         int32_t local_count=0;
         int32_t param_count=0;
+        bool fast_int=false;
     };
 
     class BytecodeModule

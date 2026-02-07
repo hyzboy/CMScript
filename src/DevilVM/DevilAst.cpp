@@ -170,12 +170,12 @@ namespace hgl::devil
         }
     }
 
-    AstValue AstValue::MakeVoid(){return AstValue{TokenType::Void,{}};}
-    AstValue AstValue::MakeBool(bool v){return AstValue{TokenType::Bool,v};}
-    AstValue AstValue::MakeInt(int32_t v){return AstValue{TokenType::Int,v};}
-    AstValue AstValue::MakeUInt(uint32_t v){return AstValue{TokenType::UInt,v};}
-    AstValue AstValue::MakeFloat(float v){return AstValue{TokenType::Float,v};}
-    AstValue AstValue::MakeString(std::string v){return AstValue{TokenType::String,std::move(v)};}
+    AstValue AstValue::MakeVoid(){return AstValue{};}
+    AstValue AstValue::MakeBool(bool v){AstValue r; r.type=TokenType::Bool; r.data.b=v; return r;}
+    AstValue AstValue::MakeInt(int32_t v){AstValue r; r.type=TokenType::Int; r.data.i=v; return r;}
+    AstValue AstValue::MakeUInt(uint32_t v){AstValue r; r.type=TokenType::UInt; r.data.u=v; return r;}
+    AstValue AstValue::MakeFloat(float v){AstValue r; r.type=TokenType::Float; r.data.f=v; return r;}
+    AstValue AstValue::MakeString(std::string v){AstValue r; r.type=TokenType::String; r.s=std::move(v); return r;}
 
     bool AstValue::IsNumeric() const
     {
@@ -186,67 +186,67 @@ namespace hgl::devil
     bool AstValue::ToBool() const
     {
         if(type==TokenType::Bool)
-            return std::get<bool>(data);
+            return data.b;
         if(type==TokenType::Int || type==TokenType::Int8 || type==TokenType::Int16)
-            return std::get<int32_t>(data)!=0;
+            return data.i!=0;
         if(type==TokenType::UInt || type==TokenType::UInt8 || type==TokenType::UInt16)
-            return std::get<uint32_t>(data)!=0u;
+            return data.u!=0u;
         if(type==TokenType::Float)
-            return std::fabs(std::get<float>(data))>0.000001f;
+            return std::fabs(data.f)>0.000001f;
         return false;
     }
 
     int32_t AstValue::ToInt() const
     {
         if(type==TokenType::Bool)
-            return std::get<bool>(data)?1:0;
+            return data.b?1:0;
         if(type==TokenType::Int || type==TokenType::Int8 || type==TokenType::Int16)
-            return std::get<int32_t>(data);
+            return data.i;
         if(type==TokenType::UInt || type==TokenType::UInt8 || type==TokenType::UInt16)
-            return static_cast<int32_t>(std::get<uint32_t>(data));
+            return static_cast<int32_t>(data.u);
         if(type==TokenType::Float)
-            return static_cast<int32_t>(std::get<float>(data));
+            return static_cast<int32_t>(data.f);
         return 0;
     }
 
     uint32_t AstValue::ToUInt() const
     {
         if(type==TokenType::Bool)
-            return std::get<bool>(data)?1u:0u;
+            return data.b?1u:0u;
         if(type==TokenType::Int || type==TokenType::Int8 || type==TokenType::Int16)
-            return static_cast<uint32_t>(std::get<int32_t>(data));
+            return static_cast<uint32_t>(data.i);
         if(type==TokenType::UInt || type==TokenType::UInt8 || type==TokenType::UInt16)
-            return std::get<uint32_t>(data);
+            return data.u;
         if(type==TokenType::Float)
-            return static_cast<uint32_t>(std::get<float>(data));
+            return static_cast<uint32_t>(data.f);
         return 0u;
     }
 
     float AstValue::ToFloat() const
     {
         if(type==TokenType::Bool)
-            return std::get<bool>(data)?1.0f:0.0f;
+            return data.b?1.0f:0.0f;
         if(type==TokenType::Int || type==TokenType::Int8 || type==TokenType::Int16)
-            return static_cast<float>(std::get<int32_t>(data));
+            return static_cast<float>(data.i);
         if(type==TokenType::UInt || type==TokenType::UInt8 || type==TokenType::UInt16)
-            return static_cast<float>(std::get<uint32_t>(data));
+            return static_cast<float>(data.u);
         if(type==TokenType::Float)
-            return std::get<float>(data);
+            return data.f;
         return 0.0f;
     }
 
     std::string AstValue::ToString() const
     {
         if(type==TokenType::String)
-            return std::get<std::string>(data);
+            return s;
         if(type==TokenType::Bool)
-            return std::get<bool>(data)?"true":"false";
+            return data.b?"true":"false";
         if(type==TokenType::Int || type==TokenType::Int8 || type==TokenType::Int16)
-            return std::to_string(std::get<int32_t>(data));
+            return std::to_string(data.i);
         if(type==TokenType::UInt || type==TokenType::UInt8 || type==TokenType::UInt16)
-            return std::to_string(std::get<uint32_t>(data));
+            return std::to_string(data.u);
         if(type==TokenType::Float)
-            return std::to_string(std::get<float>(data));
+            return std::to_string(data.f);
         return std::string();
     }
 

@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <string>
-#include <variant>
+#include <string>
 #include <hgl/devil/DevilToken.h>
 
 namespace hgl::devil
@@ -10,7 +10,14 @@ namespace hgl::devil
     struct AstValue
     {
         TokenType type=TokenType::Void;
-        std::variant<std::monostate,bool,int32_t,uint32_t,float,std::string> data;
+        union
+        {
+            bool b;
+            int32_t i;
+            uint32_t u;
+            float f;
+        } data{0};
+        std::string s;
 
         static AstValue MakeVoid();
         static AstValue MakeBool(bool v);

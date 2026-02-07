@@ -5,6 +5,69 @@ namespace hgl::devil
 {
     namespace
     {
+        bool ComputeFastInt(BytecodeFunction &func)
+        {
+            func.const_ints.clear();
+
+            for(const AstValue &value:func.constants)
+            {
+                if(value.type!=TokenType::Bool && value.type!=TokenType::Int
+                    && value.type!=TokenType::Int8 && value.type!=TokenType::Int16)
+                {
+                    return false;
+                }
+                func.const_ints.push_back(value.ToInt());
+            }
+
+            for(const Instruction &ins:func.code)
+            {
+                switch(ins.op)
+                {
+                    case OpCode::Nop:
+                    case OpCode::PushConst:
+                    case OpCode::Pop:
+                    case OpCode::LoadLocal:
+                    case OpCode::StoreLocal:
+                    case OpCode::Add:
+                    case OpCode::Sub:
+                    case OpCode::Mul:
+                    case OpCode::Div:
+                    case OpCode::Mod:
+                    case OpCode::Neg:
+                    case OpCode::Not:
+                    case OpCode::BitNot:
+                    case OpCode::BitAnd:
+                    case OpCode::BitOr:
+                    case OpCode::BitXor:
+                    case OpCode::Shl:
+                    case OpCode::Shr:
+                    case OpCode::Eq:
+                    case OpCode::Ne:
+                    case OpCode::Lt:
+                    case OpCode::Le:
+                    case OpCode::Gt:
+                    case OpCode::Ge:
+                    case OpCode::And:
+                    case OpCode::Or:
+                    case OpCode::Jump:
+                    case OpCode::JumpIfFalse:
+                    case OpCode::Ret:
+                        break;
+                    case OpCode::Cast:
+                    {
+                        const TokenType target=static_cast<TokenType>(ins.a);
+                        if(target!=TokenType::Bool && target!=TokenType::Int
+                            && target!=TokenType::Int8 && target!=TokenType::Int16)
+                            return false;
+                        break;
+                    }
+                    default:
+                        return false;
+                }
+            }
+
+            return true;
+        }
         void WriteBytes(std::vector<uint8_t> &out,const void *data,size_t size)
         {
             const uint8_t *ptr=static_cast<const uint8_t *>(data);
@@ -153,7 +216,7 @@ namespace hgl::devil
     {
         out_data.clear();
         const uint32_t magic=0x4D434244; // DBCM
-        const uint32_t version=1;
+        const uint32_t version=2;
         WriteBytes(out_data,&magic,sizeof(magic));
         WriteBytes(out_data,&version,sizeof(version));
 
@@ -198,7 +261,7 @@ namespace hgl::devil
             return false;
         if(!ReadBytes(data,offset,&version,sizeof(version)))
             return false;
-        if(magic!=0x4D434244 || version!=1)
+        if(magic!=0x4D434244 || (version!=1 && version!=2))
             return false;
 
         uint32_t func_count=0;
@@ -249,6 +312,7 @@ namespace hgl::devil
                 func.code.push_back(ins);
             }
 
+            func.fast_int=ComputeFastInt(func);
             functions.emplace(func.name,std::move(func));
         }
 

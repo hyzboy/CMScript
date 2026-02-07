@@ -3,6 +3,73 @@
 
 namespace hgl::devil
 {
+    namespace
+    {
+        bool ComputeFastInt(BytecodeFunction &func)
+        {
+            func.const_ints.clear();
+
+            for(const AstValue &value:func.constants)
+            {
+                if(value.type!=TokenType::Bool && value.type!=TokenType::Int
+                    && value.type!=TokenType::Int8 && value.type!=TokenType::Int16)
+                {
+                    return false;
+                }
+                func.const_ints.push_back(value.ToInt());
+            }
+
+            for(const Instruction &ins:func.code)
+            {
+                switch(ins.op)
+                {
+                    case OpCode::Nop:
+                    case OpCode::PushConst:
+                    case OpCode::Pop:
+                    case OpCode::LoadLocal:
+                    case OpCode::StoreLocal:
+                    case OpCode::Add:
+                    case OpCode::Sub:
+                    case OpCode::Mul:
+                    case OpCode::Div:
+                    case OpCode::Mod:
+                    case OpCode::Neg:
+                    case OpCode::Not:
+                    case OpCode::BitNot:
+                    case OpCode::BitAnd:
+                    case OpCode::BitOr:
+                    case OpCode::BitXor:
+                    case OpCode::Shl:
+                    case OpCode::Shr:
+                    case OpCode::Eq:
+                    case OpCode::Ne:
+                    case OpCode::Lt:
+                    case OpCode::Le:
+                    case OpCode::Gt:
+                    case OpCode::Ge:
+                    case OpCode::And:
+                    case OpCode::Or:
+                    case OpCode::Jump:
+                    case OpCode::JumpIfFalse:
+                    case OpCode::Ret:
+                        break;
+                    case OpCode::Cast:
+                    {
+                        const TokenType target=static_cast<TokenType>(ins.a);
+                        if(target!=TokenType::Bool && target!=TokenType::Int
+                            && target!=TokenType::Int8 && target!=TokenType::Int16)
+                            return false;
+                        break;
+                    }
+                    default:
+                        return false;
+                }
+            }
+
+            return true;
+        }
+    }
+
     int32_t BytecodeBuilder::AddLocal(const std::string &name)
     {
         const auto it=locals.find(name);
@@ -613,6 +680,7 @@ namespace hgl::devil
 
         out_func.local_count=static_cast<int32_t>(locals.size());
         out_func.param_count=static_cast<int32_t>(params.size());
+        out_func.fast_int=ComputeFastInt(out_func);
         return true;
     }
 
