@@ -1,0 +1,452 @@
+#include <hgl/devil/DevilBytecode.h>
+#include <hgl/devil/DevilModule.h>
+#include "DevilCommand.h"
+
+namespace hgl::devil
+{
+    namespace
+    {
+        bool SetParamFromValue(SystemFuncParam &out_param,TokenType expected,const AstValue &value,Module &module)
+        {
+            switch(expected)
+            {
+                case TokenType::Bool:
+                    out_param.c=static_cast<char>(value.ToBool());
+                    return true;
+                case TokenType::Int:
+                case TokenType::Int8:
+                case TokenType::Int16:
+                    out_param.i=value.ToInt();
+                    return true;
+                case TokenType::UInt:
+                case TokenType::UInt8:
+                case TokenType::UInt16:
+                    out_param.u=value.ToUInt();
+                    return true;
+                case TokenType::Float:
+                    out_param.f=value.ToFloat();
+                    return true;
+                case TokenType::String:
+                {
+                    std::string str=value.ToString();
+                    module.string_list.push_back(str);
+                    out_param.str=const_cast<char *>(module.string_list.back().c_str());
+                    return true;
+                }
+                default:
+                    return false;
+            }
+        }
+
+        bool CallNativeFunc(FuncMap *map,const std::vector<AstValue> &args,Module &module,AstValue &out_value)
+        {
+            const size_t param_count=map->param.size();
+            if(args.size()!=param_count)
+                return false;
+
+            const size_t has_base=map->base?1u:0u;
+            const size_t total_count=param_count+has_base;
+            std::vector<SystemFuncParam> params(total_count);
+
+            size_t offset=0;
+            if(map->base)
+            {
+                params[0].void_pointer=map->base;
+                offset=1;
+            }
+
+            for(size_t i=0;i<param_count;++i)
+            {
+                if(!SetParamFromValue(params[i+offset],map->param[i],args[i],module))
+                    return false;
+            }
+
+            const int param_size=static_cast<int>(total_count*sizeof(SystemFuncParam));
+
+            if(map->result==TokenType::Void)
+            {
+                void *ret=nullptr;
+                map->Call(params.data(),param_size,&ret);
+                out_value=AstValue::MakeVoid();
+                return true;
+            }
+
+            if(map->result==TokenType::Bool)
+            {
+                bool ret=false;
+                map->Call(params.data(),param_size,&ret);
+                out_value=AstValue::MakeBool(ret);
+                return true;
+            }
+
+            if(map->result==TokenType::Int || map->result==TokenType::Int8 || map->result==TokenType::Int16)
+            {
+                int ret=0;
+                map->Call(params.data(),param_size,&ret);
+                out_value=AstValue::MakeInt(ret);
+                return true;
+            }
+
+            if(map->result==TokenType::UInt || map->result==TokenType::UInt8 || map->result==TokenType::UInt16)
+            {
+                uint ret=0;
+                map->Call(params.data(),param_size,&ret);
+                out_value=AstValue::MakeUInt(ret);
+                return true;
+            }
+
+            if(map->result==TokenType::Float)
+            {
+                float ret=0.0f;
+                map->Call(params.data(),param_size,&ret);
+                out_value=AstValue::MakeFloat(ret);
+                return true;
+            }
+
+            if(map->result==TokenType::String)
+            {
+                char *ret=nullptr;
+                map->Call(params.data(),param_size,&ret);
+                out_value=AstValue::MakeString(ret?ret:"");
+                return true;
+            }
+
+            return false;
+        }
+
+        AstValue PopValue(std::vector<AstValue> &stack,bool &ok)
+        {
+            if(stack.empty())
+            {
+                ok=false;
+                return AstValue::MakeVoid();
+            }
+
+            AstValue v=std::move(stack.back());
+            stack.pop_back();
+            ok=true;
+            return v;
+        }
+    }
+
+    bool BytecodeModule::AddFunction(BytecodeFunction func)
+    {
+        if(func.name.empty())
+            return false;
+
+        if(functions.find(func.name)!=functions.end())
+            return false;
+
+        functions.emplace(func.name,std::move(func));
+        return true;
+    }
+
+    BytecodeFunction *BytecodeModule::GetFunction(const std::string &name)
+    {
+        const auto it=functions.find(name);
+        if(it==functions.end())
+            return nullptr;
+        return &it->second;
+    }
+
+    bool BytecodeVM::Execute(const std::string &func_name,const std::vector<AstValue> &args)
+    {
+        error.clear();
+        last_result=AstValue::MakeVoid();
+        value_stack.clear();
+        callstack.clear();
+
+        if(!module)
+        {
+            error="bytecode module not set";
+            return false;
+        }
+
+        BytecodeFunction *func=module->GetFunction(func_name);
+        if(!func)
+        {
+            error="bytecode function not found: "+func_name;
+            return false;
+        }
+
+        return Execute(*func,args);
+    }
+
+    bool BytecodeVM::Execute(const BytecodeFunction &func,const std::vector<AstValue> &args)
+    {
+        error.clear();
+        last_result=AstValue::MakeVoid();
+        value_stack.clear();
+        callstack.clear();
+
+        if(static_cast<int32_t>(args.size())!=func.param_count)
+        {
+            error="bytecode param count mismatch";
+            return false;
+        }
+
+        const size_t base=value_stack.size();
+        for(const AstValue &v:args)
+            value_stack.push_back(v);
+
+        if(func.local_count>func.param_count)
+        {
+            const size_t extra=static_cast<size_t>(func.local_count-func.param_count);
+            for(size_t i=0;i<extra;++i)
+                value_stack.push_back(AstValue::MakeVoid());
+        }
+
+        callstack.push_back(Frame{&func,0,base});
+
+        while(!callstack.empty())
+        {
+            if(!Step())
+                break;
+        }
+
+        return error.empty();
+    }
+
+    bool BytecodeVM::Step()
+    {
+        if(callstack.empty())
+            return false;
+
+        Frame &frame=callstack.back();
+        if(!frame.func)
+        {
+            error="bytecode missing frame function";
+            return false;
+        }
+
+        if(frame.pc>=frame.func->code.size())
+        {
+            error="bytecode pc out of range";
+            return false;
+        }
+
+        const Instruction ins=frame.func->code[frame.pc++];
+
+        switch(ins.op)
+        {
+            case OpCode::Nop:
+                return true;
+
+            case OpCode::PushConst:
+            {
+                if(ins.a<0 || static_cast<size_t>(ins.a)>=frame.func->constants.size())
+                {
+                    error="bytecode constant out of range";
+                    return false;
+                }
+                value_stack.push_back(frame.func->constants[static_cast<size_t>(ins.a)]);
+                return true;
+            }
+
+            case OpCode::Pop:
+            {
+                bool ok=false;
+                PopValue(value_stack,ok);
+                if(!ok)
+                {
+                    error="bytecode pop underflow";
+                    return false;
+                }
+                return true;
+            }
+
+            case OpCode::LoadLocal:
+            {
+                const size_t index=frame.base+static_cast<size_t>(ins.a);
+                if(index>=value_stack.size())
+                {
+                    error="bytecode load local out of range";
+                    return false;
+                }
+                value_stack.push_back(value_stack[index]);
+                return true;
+            }
+
+            case OpCode::StoreLocal:
+            {
+                const size_t index=frame.base+static_cast<size_t>(ins.a);
+                if(index>=value_stack.size())
+                {
+                    error="bytecode store local out of range";
+                    return false;
+                }
+                bool ok=false;
+                AstValue v=PopValue(value_stack,ok);
+                if(!ok)
+                {
+                    error="bytecode store local underflow";
+                    return false;
+                }
+                value_stack[index]=std::move(v);
+                return true;
+            }
+
+            case OpCode::Jump:
+            {
+                if(ins.a<0 || static_cast<size_t>(ins.a)>=frame.func->code.size())
+                {
+                    error="bytecode jump out of range";
+                    return false;
+                }
+                frame.pc=static_cast<size_t>(ins.a);
+                return true;
+            }
+
+            case OpCode::JumpIfFalse:
+            {
+                bool ok=false;
+                AstValue cond=PopValue(value_stack,ok);
+                if(!ok)
+                {
+                    error="bytecode jump if false underflow";
+                    return false;
+                }
+                if(!cond.ToBool())
+                {
+                    if(ins.a<0 || static_cast<size_t>(ins.a)>=frame.func->code.size())
+                    {
+                        error="bytecode jump if false out of range";
+                        return false;
+                    }
+                    frame.pc=static_cast<size_t>(ins.a);
+                }
+                return true;
+            }
+
+            case OpCode::CallNative:
+            {
+                if(!module || !module->GetHostModule())
+                {
+                    error="bytecode host module not set";
+                    return false;
+                }
+                if(ins.a<0 || static_cast<size_t>(ins.a)>=frame.func->constants.size())
+                {
+                    error="bytecode call native constant out of range";
+                    return false;
+                }
+                const AstValue &name_value=frame.func->constants[static_cast<size_t>(ins.a)];
+                const std::string name=name_value.ToString();
+                FuncMap *map=module->GetHostModule()->GetFuncMap(name);
+                if(!map)
+                {
+                    error="bytecode native function not found: "+name;
+                    return false;
+                }
+
+                const int argc=ins.b;
+                if(argc<0 || static_cast<size_t>(argc)>value_stack.size())
+                {
+                    error="bytecode call native arg count";
+                    return false;
+                }
+
+                std::vector<AstValue> args(static_cast<size_t>(argc));
+                for(int i=argc-1;i>=0;--i)
+                {
+                    bool ok=false;
+                    args[static_cast<size_t>(i)]=PopValue(value_stack,ok);
+                    if(!ok)
+                    {
+                        error="bytecode call native arg underflow";
+                        return false;
+                    }
+                }
+
+                AstValue out;
+                if(!CallNativeFunc(map,args,*module->GetHostModule(),out))
+                {
+                    error="bytecode call native failed: "+name;
+                    return false;
+                }
+
+                value_stack.push_back(std::move(out));
+                return true;
+            }
+
+            case OpCode::CallFunc:
+            {
+                if(!module)
+                {
+                    error="bytecode module not set";
+                    return false;
+                }
+                if(ins.a<0 || static_cast<size_t>(ins.a)>=frame.func->constants.size())
+                {
+                    error="bytecode call func constant out of range";
+                    return false;
+                }
+                const AstValue &name_value=frame.func->constants[static_cast<size_t>(ins.a)];
+                const std::string name=name_value.ToString();
+                BytecodeFunction *callee=module->GetFunction(name);
+                if(!callee)
+                {
+                    error="bytecode function not found: "+name;
+                    return false;
+                }
+
+                const int argc=ins.b;
+                if(argc<0 || static_cast<size_t>(argc)>value_stack.size())
+                {
+                    error="bytecode call func arg count";
+                    return false;
+                }
+
+                const size_t base=value_stack.size()-static_cast<size_t>(argc);
+                if(callee->local_count>callee->param_count)
+                {
+                    const size_t extra=static_cast<size_t>(callee->local_count-callee->param_count);
+                    for(size_t i=0;i<extra;++i)
+                        value_stack.push_back(AstValue::MakeVoid());
+                }
+
+                callstack.push_back(Frame{callee,0,base});
+                return true;
+            }
+
+            case OpCode::Ret:
+            {
+                bool ok=false;
+                AstValue ret=PopValue(value_stack,ok);
+                if(!ok)
+                {
+                    error="bytecode return underflow";
+                    return false;
+                }
+
+                const size_t base=frame.base;
+                callstack.pop_back();
+                if(value_stack.size()>base)
+                    value_stack.resize(base);
+
+                if(callstack.empty())
+                {
+                    last_result=std::move(ret);
+                    return false;
+                }
+
+                value_stack.push_back(std::move(ret));
+                return true;
+            }
+        }
+
+        error="bytecode unknown opcode";
+        return false;
+    }
+
+    bool BytecodeVM::SaveState(std::vector<uint8_t> &) const
+    {
+        return false;
+    }
+
+    bool BytecodeVM::LoadState(const std::vector<uint8_t> &)
+    {
+        error="bytecode state load not implemented";
+        return false;
+    }
+}
