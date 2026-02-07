@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include<hgl/type/String.h>
-#include<hgl/type/ValueArray.h>
+#include <vector>
 #include"as_tokenizer.h"
 #include<hgl/log/Log.h>
 
@@ -52,7 +52,7 @@ namespace devil
 
         eTokenType result;              //返回类型
 
-        ValueArray<eTokenType> param;         //参数类型
+        std::vector<eTokenType> param;        //参数类型
 
         FuncMap()
         {

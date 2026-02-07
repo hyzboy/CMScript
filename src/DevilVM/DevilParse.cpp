@@ -404,7 +404,7 @@ namespace hgl::devil
         eTokenType type;
 
         //按个数解晰参数
-        int i=0,param_count=map->param.GetCount();
+        int i=0,param_count=static_cast<int>(map->param.size());
         SystemFuncParam *param,*p;
 
         #if HGL_CPU == HGL_CPU_X86_64

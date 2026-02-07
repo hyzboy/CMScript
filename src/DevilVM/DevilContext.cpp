@@ -9,7 +9,7 @@ namespace devil
 {
     void Context::ClearStack()
     {
-        run_state.Clear();
+        run_state.clear();
     }
 
     bool Context::RunContext()
@@ -64,8 +64,8 @@ namespace devil
         state.func=func;
         state.index=0;
 
-        run_state.Add(state);
-        cur_state=&run_state[run_state.GetCount()-1];
+        run_state.push_back(state);
+        cur_state=&run_state[run_state.size()-1];
     }
 
     bool Context::Goto(Func *func,int index)
@@ -120,11 +120,14 @@ namespace devil
 
     bool Context::Return()
     {
-        run_state.Delete(run_state.GetCount()-1);       //删除最后一个，即当前函数
+        if(run_state.empty())
+            return(false);
 
-        if(run_state.GetCount())                            //检查堆栈中还有没有数据
+        run_state.pop_back();                                                                //删除最后一个，即当前函数
+
+        if(!run_state.empty())                              //检查堆栈中还有没有数据
         {
-            cur_state=&run_state[run_state.GetCount()-1];   //退到上一级函数
+            cur_state=&run_state[run_state.size()-1];       //退到上一级函数
 
             return(true);
         }
@@ -206,9 +209,9 @@ namespace devil
 
     bool Context::Run(const u16char *func_name)
     {
-        if(run_state.GetCount()>0)
+        if(!run_state.empty())
         {
-            cur_state=&run_state[run_state.GetCount()-1];   //取最后一个
+            cur_state=&run_state[run_state.size()-1];       //取最后一个
 
             if(cur_state->func)
             {
@@ -260,8 +263,8 @@ namespace devil
 //          PutError(u"跳转时，虚拟机的当前运行函数不存在！");
 //          return(false);
 
-            if(run_state.GetCount()>0)
-                cur_state=&run_state[run_state.GetCount()-1];   //取最后一个
+            if(!run_state.empty())
+                cur_state=&run_state[run_state.size()-1];       //取最后一个
             else
             {
                 LogError(U16_TEXT("%s"),U16_TEXT("跳转时，虚拟机的当前运行函数不存在！呼叫堆栈中也没有函数！"));
@@ -295,9 +298,9 @@ namespace devil
 
     bool Context::SaveState(io::DataOutputStream *p)
     {
-        if(!p->WriteInt32(run_state.GetCount()))return(false);
+        if(!p->WriteInt32(static_cast<int>(run_state.size())))return(false);
 
-        for(int i=0;i<run_state.GetCount();i++)
+        for(int i=0;i<static_cast<int>(run_state.size());i++)
         {
             if(!p->WriteUTF16LEString(run_state[i].func->func_name))return(false);
             if(!p->WriteInt32(run_state[i].index))return(false);
@@ -326,11 +329,11 @@ namespace devil
             sfrs.func=module->GetScriptFunc(name);
             sfrs.index=index;
 
-            run_state.Add(sfrs);
+            run_state.push_back(sfrs);
         }
 
-        if(run_state.GetCount()>0)
-            cur_state=&run_state[run_state.GetCount()-1];
+        if(!run_state.empty())
+            cur_state=&run_state[run_state.size()-1];
 
         return(true);
     }

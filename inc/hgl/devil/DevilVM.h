@@ -8,7 +8,7 @@
 #include <hgl/type/String.h>
 #include <hgl/type/StringList.h>
 #include <hgl/type/UnorderedMap.h>
-#include <hgl/type/ValueArray.h>
+#include <vector>
 
 namespace hgl
 {
@@ -123,7 +123,7 @@ namespace devil
 
     private:
 
-        ValueArray<ScriptFuncRunState>                  run_state;  //运行状态
+        std::vector<ScriptFuncRunState>                 run_state;  //运行状态
         ScriptFuncRunState *                            cur_state;  //当前状态
         void ClearStack();                                          //清空运行堆栈
         bool RunContext();                                          //运行

@@ -93,7 +93,7 @@ namespace devil
 
                                                 LogInfo(U16_TEXT("%s"),
                                                     (U16_TEXT("映射函数成功，参数")
-                                                     +U16String::numberOf(dfm->param.GetCount())
+                                                     +U16String::numberOf(static_cast<int>(dfm->param.size()))
                                                      +U16_TEXT("个:")+func_intro).c_str());
                                         #endif//_DEBUG
                                         return(true);
@@ -113,13 +113,13 @@ namespace devil
 
                 case ttString:
                                         #ifdef _DEBUG
-                                            if(dfm->param.GetCount())
+                                            if(!dfm->param.empty())
                                                 func_intro+=U16String::charOf(U16_TEXT(','));
 
                                             func_intro.Strcat(GetTokenName(type));
                                         #endif//_DEBUG
 
-                                        dfm->param.Add(type);               //增加一个参数类型项
+                                        dfm->param.push_back(type);         //增加一个参数类型项
                                         break;
 
                 case ttEnd:             delete dfm;
@@ -328,11 +328,11 @@ namespace devil
             str+=name;
             str+=U16String::charOf(U16_TEXT('('));
 
-            for(int j=0;j<dfm->param.GetCount();j++)
+            for(int j=0;j<static_cast<int>(dfm->param.size());j++)
             {
                 str.Strcat(GetTokenName(dfm->param[j]));
 
-                if(j<dfm->param.GetCount()-1)
+                if(j<static_cast<int>(dfm->param.size())-1)
                     str+=U16String::charOf(U16_TEXT(','));
             }
 
