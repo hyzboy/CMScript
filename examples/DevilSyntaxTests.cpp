@@ -17,6 +17,10 @@ int main(int,char **)
     const char *script=R"(
 int main()
 {
+    enum Color : int { Red, Green=3, Blue };
+    int e=Color::Blue;
+    print_int(e);
+
     int a=1;
     int b=2;
     int c=0;
@@ -36,6 +40,8 @@ int main()
     do { c=c+1; } while(c<5);
     print_int(c);
     for(int i=0; i<3; i=i+1){ c=c+i; }
+    print_int(c);
+    switch(e){ case Color::Red: c=10; break; case Color::Green: c=20; break; default: c=30; }
     print_int(c);
     switch(c){ case 1: c=10; break; case 2: c=20; break; default: c=30; }
     print_int(c);
