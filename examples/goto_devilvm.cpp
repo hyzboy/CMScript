@@ -18,7 +18,7 @@ namespace
 
 int main()
 {
-    hgl::DevilModule module;
+    hgl::devil::Module module;
 
     if(!module.MapFunc(U16_TEXT("void set(int)"), (void *)(&SetValue)))
     {
@@ -41,7 +41,7 @@ int main()
         return 1;
     }
 
-    hgl::DevilContext context(&module);
+    hgl::devil::Context context(&module);
 
     if(!context.Start(U16_TEXT("main")))
     {

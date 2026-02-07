@@ -5,12 +5,14 @@
 
 namespace hgl
 {
-    void DevilContext::ClearStack()
+namespace devil
+{
+    void Context::ClearStack()
     {
         run_state.Clear();
     }
 
-    bool DevilContext::RunContext()
+    bool Context::RunContext()
     {
         while(true)
         {
@@ -19,7 +21,7 @@ namespace hgl
             {
                 ScriptFuncRunState *sfrs=cur_state;                     //cmd->run有可能更改cur_state，所以这里保存，以保证sfrs->index++正确
 
-                DevilCommand *cmd=sfrs->func->command[sfrs->index++];   //cmd->run有可能更改index,所以这里先加
+                Command *cmd=sfrs->func->command[sfrs->index++];   //cmd->run有可能更改index,所以这里先加
 
                 #ifdef _DEBUG
                 LogInfo(U16_TEXT("%s"),
@@ -56,7 +58,7 @@ namespace hgl
         }
     }
 
-    void DevilContext::ScriptFuncCall(DevilFunc *func)
+    void Context::ScriptFuncCall(Func *func)
     {
         ScriptFuncRunState state;
         state.func=func;
@@ -66,7 +68,7 @@ namespace hgl
         cur_state=&run_state[run_state.GetCount()-1];
     }
 
-    bool DevilContext::Goto(DevilFunc *func,int index)
+    bool Context::Goto(Func *func,int index)
     {
         if(index<0)
         {
@@ -92,11 +94,11 @@ namespace hgl
         }
     }
 
-    bool DevilContext::Goto(const u16char *func_name,const u16char *flag)
+    bool Context::Goto(const u16char *func_name,const u16char *flag)
     {
         ClearStack();
 
-        DevilFunc *func;
+        Func *func;
 
         func=module->GetScriptFunc(func_name);
 
@@ -116,7 +118,7 @@ namespace hgl
         return Goto(flag);
     }
 
-    bool DevilContext::Return()
+    bool Context::Return()
     {
         run_state.Delete(run_state.GetCount()-1);       //删除最后一个，即当前函数
 
@@ -130,13 +132,13 @@ namespace hgl
             return(false);
     }
 
-    bool Start(DevilFunc *,const va_list &);
+    bool Start(Func *,const va_list &);
 
-    bool DevilContext::Start(const u16char *func_name)
+    bool Context::Start(const u16char *func_name)
     {
         ClearStack();
 
-        DevilFunc *func;
+        Func *func;
 
         func=module->GetScriptFunc(func_name);
 
@@ -156,7 +158,7 @@ namespace hgl
         return RunContext();
     }
 
-    bool DevilContext::Start(DevilFunc *func,...)
+    bool Context::Start(Func *func,...)
     {
         if(!func)
             return(false);
@@ -168,9 +170,9 @@ namespace hgl
         return RunContext();
     }
 
-    bool DevilContext::StartFlag(const u16char *func_name,const u16char *goto_flag)
+    bool Context::StartFlag(const u16char *func_name,const u16char *goto_flag)
     {
-        DevilFunc *func;
+        Func *func;
 
         func=module->GetScriptFunc(func_name);
 
@@ -182,7 +184,7 @@ namespace hgl
             return(false);
     }
 
-    bool DevilContext::StartFlag(DevilFunc *func,const u16char *goto_flag)
+    bool Context::StartFlag(Func *func,const u16char *goto_flag)
     {
         if(!func)
             return(false);
@@ -197,12 +199,12 @@ namespace hgl
             return(false);
     }
 
-    bool DevilContext::Start(const u16char *func_name,const u16char *goto_flag)
+    bool Context::Start(const u16char *func_name,const u16char *goto_flag)
     {
         return StartFlag(func_name,goto_flag);
     }
 
-    bool DevilContext::Run(const u16char *func_name)
+    bool Context::Run(const u16char *func_name)
     {
         if(run_state.GetCount()>0)
         {
@@ -238,12 +240,12 @@ namespace hgl
         return RunContext();
     }
 
-    void DevilContext::Pause()
+    void Context::Pause()
     {
         State=dvsPause;
     }
 
-    void DevilContext::Stop()
+    void Context::Stop()
     {
         State=dvsStop;
         ClearStack();
@@ -251,7 +253,7 @@ namespace hgl
         cur_state=nullptr;
     }
 
-    bool DevilContext::Goto(const u16char *flag)
+    bool Context::Goto(const u16char *flag)
     {
         if(!cur_state)
         {
@@ -281,7 +283,7 @@ namespace hgl
         return Goto(cur_state->func,index);
     }
 
-    bool DevilContext::GetCurrentState(U16String &func_name,int &func_line)
+    bool Context::GetCurrentState(U16String &func_name,int &func_line)
     {
         if(!cur_state)return(false);
 
@@ -291,7 +293,7 @@ namespace hgl
         return(true);
     }
 
-    bool DevilContext::SaveState(io::DataOutputStream *p)
+    bool Context::SaveState(io::DataOutputStream *p)
     {
         if(!p->WriteInt32(run_state.GetCount()))return(false);
 
@@ -304,7 +306,7 @@ namespace hgl
         return(true);
     }
 
-    bool DevilContext::LoadState(io::DataInputStream *p)
+    bool Context::LoadState(io::DataInputStream *p)
     {
         ClearStack();
         cur_state=nullptr;
@@ -332,4 +334,5 @@ namespace hgl
 
         return(true);
     }
+}//namespace devil
 }//namespace hgl

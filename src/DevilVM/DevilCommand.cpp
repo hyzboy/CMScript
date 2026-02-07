@@ -4,11 +4,13 @@
 
 namespace hgl
 {
+namespace devil
+{
 #if HGL_CPU == HGL_CPU_X86_32
     void *CallCDeclFunction(void *,const void *,int);                                           ///<呼叫C函数
     void *CallThiscallFunction(void *,const void *,const void *,int);                           ///<呼叫C++函数
 
-    bool DevilFuncMap::Call(const DevilSystemFuncParam *call_param,const int param_size,void *return_result)
+    bool FuncMap::Call(const SystemFuncParam *call_param,const int param_size,void *return_result)
     {
         if(base)        //有this指针
             *(void **)return_result=CallThiscallFunction(func,base,call_param,param_size);
@@ -20,7 +22,7 @@ namespace hgl
 #elif HGL_CPU == HGL_CPU_X86_64
     extern "C" void *CallX64(void *func,int argc,const void *argv, const void *argv_float);
 
-    bool DevilFuncMap::Call(const DevilSystemFuncParam *call_param,const int param_size,void *return_result)
+    bool FuncMap::Call(const SystemFuncParam *call_param,const int param_size,void *return_result)
     {
         //X86-64位情况下，this放入参数的第一个，在解析代码时已经确定，所以无需再次处理
         *(void **)return_result=CallX64(func,param_size,call_param,call_param);
@@ -28,11 +30,12 @@ namespace hgl
         return(true);
     }
 #endif//
+}//namespace devil
 }//namespace hgl
 
 //namespace hgl
 //{
-//  DevilSystemFuncCallDynamic::DevilSystemFuncCallDynamic(DevilFuncMap *dfm)
+//  SystemFuncCallDynamic::SystemFuncCallDynamic(FuncMap *dfm)
 //  {
 //      func=dfm;
 //
@@ -40,12 +43,12 @@ namespace hgl
 //      param=new uint[dfm->param.Count];
 //  }
 //
-//  DevilSystemFuncCallDynamic::~DevilSystemFuncCallDynamic()
+//  SystemFuncCallDynamic::~SystemFuncCallDynamic()
 //  {
 //      delete[] param;
 //  }
 //
-//  bool DevilSystemFuncCallDynamic::Run(DevilContext *context)
+//  bool SystemFuncCallDynamic::Run(Context *context)
 //  {
 //
 //  }
@@ -53,23 +56,28 @@ namespace hgl
 
 namespace hgl
 {
-    DevilScriptFuncCall::DevilScriptFuncCall(DevilModule *dm,DevilFunc *df)
+namespace devil
+{
+    ScriptFuncCall::ScriptFuncCall(Module *dm,Func *df)
     {
         module=dm;
         func=df;
     }
 
-    bool DevilScriptFuncCall::Run(DevilContext *context)
+    bool ScriptFuncCall::Run(Context *context)
     {
         context->ScriptFuncCall(func);
 
         return(true);
     }
+}//namespace devil
 }//namespace hgl
 
 namespace hgl
 {
-    DevilGoto::DevilGoto(DevilModule *dm,DevilFunc *df,const U16String &flag)
+namespace devil
+{
+    Goto::Goto(Module *dm,Func *df,const U16String &flag)
     {
         module=dm;
 
@@ -80,7 +88,7 @@ namespace hgl
         index=-1;
     }
 
-    void DevilGoto::UpdateGotoFlag()
+    void Goto::UpdateGotoFlag()
     {
         func->goto_flag.Get(name,index);        // 由于跳转标识有可能在这个GOTO之后定义，所以必须等这个函数解晰完了，再调用SetLine
 
@@ -90,7 +98,7 @@ namespace hgl
                          .c_str());
     }
 
-    bool DevilGoto::Run(DevilContext *context)
+    bool Goto::Run(Context *context)
     {
         #ifdef _DEBUG
             LogInfo(U16_TEXT("%s"),
@@ -100,11 +108,14 @@ namespace hgl
 
         return context->Goto(func,index);
     }
+}//namespace devil
 }//namespace hgl
 
 namespace hgl
 {
-    DevilCompGoto::DevilCompGoto(DevilModule *dm,DevilCompInterface *dci,DevilFunc *f)
+namespace devil
+{
+    CompGoto::CompGoto(Module *dm,CompInterface *dci,Func *f)
     {
         module=dm;
         comp=dci;
@@ -113,12 +124,12 @@ namespace hgl
         index=-1;
     }
 
-    DevilCompGoto::~DevilCompGoto()
+    CompGoto::~CompGoto()
     {
         delete comp;
     }
 
-    void DevilCompGoto::UpdateGotoFlag()
+    void CompGoto::UpdateGotoFlag()
     {
         func->goto_flag.Get(else_flag,index);
 
@@ -127,7 +138,7 @@ namespace hgl
                      (U16_TEXT("在函数<")+func->func_name+U16_TEXT(">没有找到跳转标识:")+else_flag).c_str());
     }
 
-    bool DevilCompGoto::Run(DevilContext *context)
+    bool CompGoto::Run(Context *context)
     {
         if(comp->Comp())return(true);
 
@@ -136,18 +147,22 @@ namespace hgl
 
         return context->Goto(func,index);
     }
+}//namespace devil
 }//namespace hgl
 
 namespace hgl
 {
-    DevilReturn::DevilReturn(DevilModule *dm)
+namespace devil
+{
+    Return::Return(Module *dm)
     {
         module=dm;
     }
 
-    bool DevilReturn::Run(DevilContext *context)
+    bool Return::Run(Context *context)
     {
         return context->Return();
     }
+}//namespace devil
 }//namespace hgl
 

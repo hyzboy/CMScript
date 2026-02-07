@@ -4,15 +4,17 @@
 
 namespace hgl
 {
+namespace devil
+{
     /**
     * 映射一个属性
     * @param intro 属性在脚本语言中的描述,如"int value","string name"等
     * @param address 属性的地址
     * @return 是否创建映射成功
     */
-    bool DevilModule::MapProperty(const u16char *intro,void *address)
+    bool Module::MapProperty(const u16char *intro,void *address)
     {
-        DevilParse parse(this,intro);
+        Parse parse(this,intro);
         eTokenType type;
         U16String name;
 
@@ -33,7 +35,7 @@ namespace hgl
         }
 
         {
-            DevilPropertyMap *dpm=new DevilPropertyMap;
+            PropertyMap *dpm=new PropertyMap;
 
             dpm->type=type;
             dpm->address=address;
@@ -44,11 +46,11 @@ namespace hgl
         }
     }
 
-    bool DevilModule::_MapFunc(const u16char *intro,void *this_pointer,void *func_pointer)
+    bool Module::_MapFunc(const u16char *intro,void *this_pointer,void *func_pointer)
     {
-        DevilParse parse(this,intro);
+        Parse parse(this,intro);
         eTokenType type;
-        DevilFuncMap *dfm;
+        FuncMap *dfm;
 
         U16String name,func_name;
 
@@ -71,7 +73,7 @@ namespace hgl
                 //.Sprintf(u"%8s %s(",GetTokenName(type),func_name.wc_str());
         #endif//
 
-        dfm=new DevilFuncMap;
+        dfm=new FuncMap;
 
         dfm->base   =this_pointer;
         dfm->func   =func_pointer;
@@ -132,7 +134,7 @@ namespace hgl
     * @param func_pointer 函数指针
     * @return 是否映射成功
     */
-    bool DevilModule::MapFunc(const u16char *intro,void *func_pointer)
+    bool Module::MapFunc(const u16char *intro,void *func_pointer)
     {
         return _MapFunc(intro,nullptr,func_pointer);
     }
@@ -144,9 +146,9 @@ namespace hgl
     //* @param func_pointer 函数指针
     //* @return 是否映射成功
     //*/
-    //bool DevilScriptModule::MapFunc(void *data,const u16char *intro,void *func_pointer)
+    //bool Module::MapFunc(void *data,const u16char *intro,void *func_pointer)
     //{
-    //  return _MapFunc(DevilFuncMap::fcmFirstObject,   intro,data,func_pointer);
+    //  return _MapFunc(FuncMap::fcmFirstObject,   intro,data,func_pointer);
     //}
 
     /**
@@ -156,14 +158,14 @@ namespace hgl
     * @param func_pointer 函数指针
     * @return 是否映射成功
     */
-    bool DevilModule::MapFunc(const u16char *intro,void *this_pointer,void *func_pointer)
+    bool Module::MapFunc(const u16char *intro,void *this_pointer,void *func_pointer)
     {
         return _MapFunc(intro,this_pointer,func_pointer);
     }
 
-    DevilFunc *DevilModule::GetScriptFunc(const U16String &name)
+    Func *Module::GetScriptFunc(const U16String &name)
     {
-        DevilFunc *func;
+        Func *func;
 
         if(script_func.Get(name,func))
             return func;
@@ -173,9 +175,9 @@ namespace hgl
         return(nullptr);
     }
 
-    DevilFuncMap *DevilModule::GetFuncMap(const U16String &name)
+    FuncMap *Module::GetFuncMap(const U16String &name)
     {
-        DevilFuncMap *func;
+        FuncMap *func;
 
         if(func_map.Get(name,func))
             return func;
@@ -183,7 +185,7 @@ namespace hgl
             return(nullptr);
     }
 
-    bool DevilModule::AddEnum(const u16char *enum_name,DevilEnum *script_enum)
+    bool Module::AddEnum(const u16char *enum_name,Enum *script_enum)
     {
         if(enum_map.ContainsKey(enum_name))
         {
@@ -196,9 +198,9 @@ namespace hgl
         return(true);
     }
 
-    DevilPropertyMap *DevilModule::GetPropertyMap(const U16String &name)
+    PropertyMap *Module::GetPropertyMap(const U16String &name)
     {
-        DevilPropertyMap *dpm;
+        PropertyMap *dpm;
 
         if(prop_map.Get(name,dpm))
             return dpm;
@@ -212,7 +214,7 @@ namespace hgl
     * @param source_length 脚本长度，-1表示自动检测
     * @return 是否添加并编译成功
     */
-    bool DevilModule::AddScript(const u16char *source,int source_length)
+    bool Module::AddScript(const u16char *source,int source_length)
     {
         if(!source)return(false);
 
@@ -222,7 +224,7 @@ namespace hgl
         if(source_length<1)
             return(false);
 
-        DevilParse parse(this,source,source_length);
+        Parse parse(this,source,source_length);
         U16String name;
 
         while(true)
@@ -235,7 +237,7 @@ namespace hgl
 
                 if(!script_func.ContainsKey(name))              //查找是否有同样的函数名存在
                 {
-                    DevilFunc *func=new DevilFunc(this,name);
+                    Func *func=new Func(this,name);
 
                     LogInfo(U16_TEXT("%s"),(U16_TEXT("func ")+name+U16_TEXT("()\n{")).c_str());
 
@@ -277,14 +279,14 @@ namespace hgl
         return(true);
     }
 
-    void DevilModule::Clear()
+    void Module::Clear()
     {
         script_func.Clear();
         string_list.Clear();
     }
 
 #ifdef _DEBUG
-    void DevilModule::LogPropertyList()
+    void Module::LogPropertyList()
     {
         int n=prop_map.GetCount();
 
@@ -294,7 +296,7 @@ namespace hgl
         for(const auto &kv:prop_map)
         {
             const U16String &name=kv.first;
-            const DevilPropertyMap *dpm=kv.second;
+            const PropertyMap *dpm=kv.second;
 
             LogInfo(U16_TEXT("%s"),
                 (U16_TEXT("\t")+U16String::numberOf(i)
@@ -304,7 +306,7 @@ namespace hgl
         }
     }
 
-    void DevilModule::LogMapFuncList()
+    void Module::LogMapFuncList()
     {
         int n=func_map.GetCount();
 
@@ -315,7 +317,7 @@ namespace hgl
         {
             U16String str;
             const U16String &name=kv.first;
-            const DevilFuncMap *dfm=kv.second;
+            const FuncMap *dfm=kv.second;
 
             //str.Sprintf(u"\t%d\t%8s %s(",i,GetTokenName(dfm->result),name.wc_str());
             str=U16String::charOf(U16_TEXT('\t'));
@@ -341,7 +343,7 @@ namespace hgl
         }
     }
 
-    void DevilModule::LogScriptFuncList()
+    void Module::LogScriptFuncList()
     {
         int n=script_func.GetCount();
 
@@ -358,4 +360,5 @@ namespace hgl
         }
     }
 #endif//_DEBUG
+}//namespace devil
 }//namespace hgl

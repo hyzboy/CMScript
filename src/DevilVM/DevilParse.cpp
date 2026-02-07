@@ -1,7 +1,7 @@
 ﻿#include"DevilParse.h"
 #include"DevilModule.h"
 
-namespace hgl
+namespace hgl::devil
 {
     void ConvertString(U16String &targe,u16char *source,int length)
     {
@@ -61,11 +61,8 @@ namespace hgl
 
         delete[] temp;
     }
-}
 
-namespace hgl
-{
-    DevilParse::DevilParse(DevilModule *dm,const u16char *str,int len)
+    Parse::Parse(Module *dm,const u16char *str,int len)
     {
         module=dm;
 
@@ -78,7 +75,7 @@ namespace hgl
             source_length=len;
     }
 
-    eTokenType DevilParse::GetToken(U16String &intro)
+    eTokenType Parse::GetToken(U16String &intro)
     {
         while(true)
         {
@@ -106,7 +103,7 @@ namespace hgl
         }
     }
 
-    eTokenType DevilParse::CheckToken(U16String &intro)
+    eTokenType Parse::CheckToken(U16String &intro)
     {
         const u16char *cur=source_cur;
         uint len=source_length;
@@ -120,7 +117,7 @@ namespace hgl
         return(type);
     }
 
-    bool DevilParse::GetToken(eTokenType tt,U16String &name)
+    bool Parse::GetToken(eTokenType tt,U16String &name)
     {
         eTokenType type;
 
@@ -136,7 +133,7 @@ namespace hgl
         }
     }
 
-    void DevilParse::ParseValue(DevilFunc *func,eTokenType value_type,U16String &/*type_name*/)
+    void Parse::ParseValue(Func *func,eTokenType value_type,U16String &/*type_name*/)
     {
         eTokenType type;
 
@@ -147,7 +144,7 @@ namespace hgl
         if(type!=ttIdentifier)  //变量名称
             return;
 
-        DevilValueInterface *dvi=func->AddValue(value_type,value_name);
+        ValueInterface *dvi=func->AddValue(value_type,value_name);
 
         if(!dvi)
         {
@@ -162,7 +159,7 @@ namespace hgl
         if(type==ttEndStatement)return; //分号
         if(type!=ttAssignment)return;   //等号
 
-        DevilValueInterface *dvi_value=ParseValue();    //后面的值或表达式
+        ValueInterface *dvi_value=ParseValue();    //后面的值或表达式
 
         if(!dvi_value)
         {
@@ -177,7 +174,7 @@ namespace hgl
         return;
     }
 
-/*  void DevilParse::ParseEnum()
+/*  void Parse::ParseEnum()
     {
         eTokenType type;
         U16String name;
@@ -187,7 +184,7 @@ namespace hgl
 
     }*/
 
-    bool DevilParse::ParseFunc(DevilFunc *func)
+    bool Parse::ParseFunc(Func *func)
     {
         U16String name;
 
@@ -198,7 +195,7 @@ namespace hgl
         return ParseCode(func);
     }
 
-    bool DevilParse::ParseCode(DevilFunc *func)
+    bool Parse::ParseCode(Func *func)
     {
         U16String name;
         eTokenType type;
@@ -309,16 +306,16 @@ namespace hgl
                 {
                     //真实函数调用验证
                     {
-                        DevilFuncMap *map_func=module->GetFuncMap(name);
+                        FuncMap *map_func=module->GetFuncMap(name);
 
                         if(map_func)
                         {
                             #ifdef _DEBUG
                             U16String intro;
 
-                            DevilCommand *cmd=ParseFuncCall(name,map_func,intro);
+                            Command *cmd=ParseFuncCall(name,map_func,intro);
                             #else
-                            DevilCommand *cmd=ParseFuncCall(map_func);
+                            Command *cmd=ParseFuncCall(map_func);
                             #endif//
 
                             if(cmd)
@@ -353,7 +350,7 @@ namespace hgl
 
                     //脚本函数调用验证
                     {
-                        DevilFunc *script_func=module->GetScriptFunc(name);
+                        Func *script_func=module->GetScriptFunc(name);
 
                         if(script_func)
                         {
@@ -387,7 +384,7 @@ namespace hgl
     template<> bool ParseToNumber<float>(float &result,const U16String &str){return str.ToFloat(result);}
 
     template<typename T>
-    bool DevilParse::ParseNumber(T &result,const U16String &str)           //由于从程式理论上讲，调用这个函数时，都是因为测出str是数值的时候，所以不可能产生解析错误的情况。
+    bool Parse::ParseNumber(T &result,const U16String &str)           //由于从程式理论上讲，调用这个函数时，都是因为测出str是数值的时候，所以不可能产生解析错误的情况。
     {
         if(ParseToNumber<T>(result,str))
             return(true);
@@ -398,9 +395,9 @@ namespace hgl
     }
 
     #ifdef _DEBUG
-    DevilCommand *DevilParse::ParseFuncCall(U16String &func_name,DevilFuncMap *map,U16String &intro)
+    Command *Parse::ParseFuncCall(U16String &func_name,FuncMap *map,U16String &intro)
     #else
-    DevilCommand *DevilParse::ParseFuncCall(DevilFuncMap *map)
+    Command *Parse::ParseFuncCall(FuncMap *map)
     #endif//
     {
         U16String name;
@@ -408,12 +405,12 @@ namespace hgl
 
         //按个数解晰参数
         int i=0,param_count=map->param.GetCount();
-        DevilSystemFuncParam *param,*p;
+        SystemFuncParam *param,*p;
 
         #if HGL_CPU == HGL_CPU_X86_64
         if(map->base)
         {
-            param=new DevilSystemFuncParam[param_count+1];
+            param=new SystemFuncParam[param_count+1];
 
             param[0].void_pointer=map->base;            //x64下第一个参数放置this
 
@@ -421,7 +418,7 @@ namespace hgl
         }
         else
         {
-            param=new DevilSystemFuncParam[param_count];
+            param=new SystemFuncParam[param_count];
 
             p=param;
         }
@@ -567,29 +564,29 @@ namespace hgl
         if(map->base)param_count++;                 //如果是x64位下的C++函数，第一个参数放this指针
         #endif//HGL_CPU == HGL_CPU_X86_64
 
-        if(map->result==ttVoid  )return(new DevilSystemFuncCallFixed<void *     >(map,param,param_count));else
+        if(map->result==ttVoid  )return(new SystemFuncCallFixed<void *     >(map,param,param_count));else
 
-        if(map->result==ttBool  )return(new DevilSystemFuncCallFixed<bool       >(map,param,param_count));else
-        if(map->result==ttInt8  )return(new DevilSystemFuncCallFixed<int8       >(map,param,param_count));else
-        if(map->result==ttInt16 )return(new DevilSystemFuncCallFixed<int16      >(map,param,param_count));else
-        if(map->result==ttInt   )return(new DevilSystemFuncCallFixed<int32      >(map,param,param_count));else
-        if(map->result==ttUInt8 )return(new DevilSystemFuncCallFixed<uint8      >(map,param,param_count));else
-        if(map->result==ttUInt16)return(new DevilSystemFuncCallFixed<uint16     >(map,param,param_count));else
-        if(map->result==ttUInt  )return(new DevilSystemFuncCallFixed<uint32     >(map,param,param_count));else
-        if(map->result==ttFloat )return(new DevilSystemFuncCallFixed<float      >(map,param,param_count));else
-        if(map->result==ttString)return(new DevilSystemFuncCallFixed<u16char *  >(map,param,param_count));else
+        if(map->result==ttBool  )return(new SystemFuncCallFixed<bool       >(map,param,param_count));else
+        if(map->result==ttInt8  )return(new SystemFuncCallFixed<int8       >(map,param,param_count));else
+        if(map->result==ttInt16 )return(new SystemFuncCallFixed<int16      >(map,param,param_count));else
+        if(map->result==ttInt   )return(new SystemFuncCallFixed<int32      >(map,param,param_count));else
+        if(map->result==ttUInt8 )return(new SystemFuncCallFixed<uint8      >(map,param,param_count));else
+        if(map->result==ttUInt16)return(new SystemFuncCallFixed<uint16     >(map,param,param_count));else
+        if(map->result==ttUInt  )return(new SystemFuncCallFixed<uint32     >(map,param,param_count));else
+        if(map->result==ttFloat )return(new SystemFuncCallFixed<float      >(map,param,param_count));else
+        if(map->result==ttString)return(new SystemFuncCallFixed<u16char *  >(map,param,param_count));else
         {
             delete[] param;
             return(nullptr);
         }
     }
 
-    bool DevilParse::ParseIf(DevilFunc *func)
+    bool Parse::ParseIf(Func *func)
     {
         U16String name;
         U16String flag;
-        DevilCompInterface *dci;
-        DevilCompGoto *dcg;
+        CompInterface *dci;
+        CompGoto *dcg;
 
         flag=func->func_name+U16_TEXT('_')+U16String::numberOf(func->command.GetCount());
 
@@ -598,7 +595,7 @@ namespace hgl
         if(!dci)
             return(false);
 
-        func->command.Add(dcg=new DevilCompGoto(module,dci,func));                                  //增加比较跳转控制
+        func->command.Add(dcg=new CompGoto(module,dci,func));                                  //增加比较跳转控制
 
         LogInfo(U16_TEXT("%s"),(U16_TEXT("if ")+flag).c_str());
 
@@ -624,11 +621,11 @@ namespace hgl
         return(true);
     }
 
-    DevilCompInterface *DevilParse::ParseComp()
+    CompInterface *Parse::ParseComp()
     {
         U16String name;
         int comp;
-        DevilValueInterface *left,*right;
+        ValueInterface *left,*right;
 
         GetToken(ttOpenParanthesis,name);       // (
 
@@ -665,19 +662,19 @@ namespace hgl
 
         //创建比较指令
         {
-            DevilCompInterface *dci=nullptr;
+            CompInterface *dci=nullptr;
 
             #define DEVIL_COMP_FLAG(flag,func,_lt,_rt)  case flag:dci=new func<_lt,_rt>(left,right);break;
 
             #define DEVIL_COMP_CREATE(lt,_lt,rt,_rt)    if((left->type==lt)&&(right->type==rt)) \
                                                             switch(comp)    \
                                                             {   \
-                                                                DEVIL_COMP_FLAG(ttEqual             ,DevilCompEqu       ,_lt,_rt)   \
-                                                                DEVIL_COMP_FLAG(ttNotEqual          ,DevilCompNotEqu    ,_lt,_rt)   \
-                                                                DEVIL_COMP_FLAG(ttLessThan          ,DevilCompLess      ,_lt,_rt)   \
-                                                                DEVIL_COMP_FLAG(ttGreaterThan       ,DevilCompGreater   ,_lt,_rt)   \
-                                                                DEVIL_COMP_FLAG(ttLessThanOrEqual   ,DevilCompLessEqu   ,_lt,_rt)   \
-                                                                DEVIL_COMP_FLAG(ttGreaterThanOrEqual,DevilCompGreaterEqu,_lt,_rt)   \
+                                                                DEVIL_COMP_FLAG(ttEqual             ,CompEqu       ,_lt,_rt)   \
+                                                                DEVIL_COMP_FLAG(ttNotEqual          ,CompNotEqu    ,_lt,_rt)   \
+                                                                DEVIL_COMP_FLAG(ttLessThan          ,CompLess      ,_lt,_rt)   \
+                                                                DEVIL_COMP_FLAG(ttGreaterThan       ,CompGreater   ,_lt,_rt)   \
+                                                                DEVIL_COMP_FLAG(ttLessThanOrEqual   ,CompLessEqu   ,_lt,_rt)   \
+                                                                DEVIL_COMP_FLAG(ttGreaterThanOrEqual,CompGreaterEqu,_lt,_rt)   \
                                                             };
 
             #define DEVIL_COMP_ARRAY(lt,_lt)    DEVIL_COMP_CREATE(lt,_lt,ttBool,    bool);  \
@@ -704,12 +701,12 @@ namespace hgl
         }
     }
 
-    DevilValueInterface *DevilParse::ParseValue()
+    ValueInterface *Parse::ParseValue()
     {
         int type;
         U16String name,temp;
 
-        DevilValueInterface *dcii=nullptr;
+        ValueInterface *dcii=nullptr;
 
         type=GetToken(name);
         if(type==ttIdentifier)      //未知标识符
@@ -720,7 +717,7 @@ namespace hgl
             {
                 //真实函数调用验证
                 {
-                    DevilFuncMap *map_func=module->GetFuncMap(name);
+                        FuncMap *map_func=module->GetFuncMap(name);
 
                     if(map_func)
                     {
@@ -729,28 +726,28 @@ namespace hgl
                         #ifdef _DEBUG
                         U16String intro;
 
-                        DevilCommand *cmd=ParseFuncCall(name,map_func,intro);
+                            Command *cmd=ParseFuncCall(name,map_func,intro);
                         #else
-                        DevilCommand *cmd=ParseFuncCall(map_func);
+                            Command *cmd=ParseFuncCall(map_func);
                         #endif//
 
                         if(cmd)
                         {
                             switch(map_func->result)
                             {
-                                case ttBool:    dcii=new DevilValueFuncMap<bool     >(module,cmd,ttBool     );break;
+                                case ttBool:    dcii=new ValueFuncMap<bool     >(module,cmd,ttBool     );break;
 
-                                case ttInt8:    dcii=new DevilValueFuncMap<int8     >(module,cmd,ttInt8     );break;
-                                case ttInt16:   dcii=new DevilValueFuncMap<int16    >(module,cmd,ttInt16    );break;
-                                case ttInt:     dcii=new DevilValueFuncMap<int32    >(module,cmd,ttInt      );break;
+                                case ttInt8:    dcii=new ValueFuncMap<int8     >(module,cmd,ttInt8     );break;
+                                case ttInt16:   dcii=new ValueFuncMap<int16    >(module,cmd,ttInt16    );break;
+                                case ttInt:     dcii=new ValueFuncMap<int32    >(module,cmd,ttInt      );break;
 
-                                case ttUInt8:   dcii=new DevilValueFuncMap<uint8    >(module,cmd,ttUInt8    );break;
-                                case ttUInt16:  dcii=new DevilValueFuncMap<uint16   >(module,cmd,ttUInt16   );break;
-                                case ttUInt:    dcii=new DevilValueFuncMap<uint32   >(module,cmd,ttUInt     );break;
+                                case ttUInt8:   dcii=new ValueFuncMap<uint8    >(module,cmd,ttUInt8    );break;
+                                case ttUInt16:  dcii=new ValueFuncMap<uint16   >(module,cmd,ttUInt16   );break;
+                                case ttUInt:    dcii=new ValueFuncMap<uint32   >(module,cmd,ttUInt     );break;
 
-                                case ttFloat:   dcii=new DevilValueFuncMap<float    >(module,cmd,ttFloat    );break;
+                                case ttFloat:   dcii=new ValueFuncMap<float    >(module,cmd,ttFloat    );break;
 
-                                case ttString:  dcii=new DevilValueFuncMap<u16char *>(module,cmd,ttString   );break;
+                                case ttString:  dcii=new ValueFuncMap<u16char *>(module,cmd,ttString   );break;
 
                                 default:        LogError(U16_TEXT("%s"),U16_TEXT("if中调用的函数返回类型无法支持"));break;
                             }
@@ -762,11 +759,11 @@ namespace hgl
 
                 //脚本函数调用验证
 /*              {
-                    DevilFunc *script_func=module->GetScriptFunc(name);
+                    Func *script_func=module->GetScriptFunc(name);
 
                     if(script_func)
                     {
-                        func->command.Add(new DevilScriptFuncCall(module,script_func));
+                        func->command.Add(new ScriptFuncCall(module,script_func));
                         return(true);
                     }
                 }
@@ -775,26 +772,26 @@ namespace hgl
             }
             else    //属性映射
             {
-                DevilPropertyMap *dpm=module->GetPropertyMap(name);
+                PropertyMap *dpm=module->GetPropertyMap(name);
 
                 if(dpm)
                 {
                     switch(dpm->type)
                     {
-                        case ttBool:    dcii=new DevilValueProperty<bool    >(module,dpm,ttBool);break;
+                        case ttBool:    dcii=new ValueProperty<bool    >(module,dpm,ttBool);break;
 
-                        case ttInt8:    dcii=new DevilValueProperty<int8    >(module,dpm,ttInt8);break;
-                        case ttInt16:   dcii=new DevilValueProperty<int16   >(module,dpm,ttInt16);break;
-                        case ttInt:     dcii=new DevilValueProperty<int32   >(module,dpm,ttInt);break;
-                        //case ttInt64: dcii=new DevilValueProperty<int64   >(module,dpm,ttInt64);break;
+                        case ttInt8:    dcii=new ValueProperty<int8    >(module,dpm,ttInt8);break;
+                        case ttInt16:   dcii=new ValueProperty<int16   >(module,dpm,ttInt16);break;
+                        case ttInt:     dcii=new ValueProperty<int32   >(module,dpm,ttInt);break;
+                        //case ttInt64: dcii=new ValueProperty<int64   >(module,dpm,ttInt64);break;
 
-                        case ttUInt8:   dcii=new DevilValueProperty<uint8   >(module,dpm,ttUInt8);break;
-                        case ttUInt16:  dcii=new DevilValueProperty<uint16  >(module,dpm,ttUInt16);break;
-                        case ttUInt:    dcii=new DevilValueProperty<uint32  >(module,dpm,ttUInt);break;
-                        //case ttUInt64:    dcii=new DevilValueProperty<uint64  >(module,dpm,ttUInt64);break;
+                        case ttUInt8:   dcii=new ValueProperty<uint8   >(module,dpm,ttUInt8);break;
+                        case ttUInt16:  dcii=new ValueProperty<uint16  >(module,dpm,ttUInt16);break;
+                        case ttUInt:    dcii=new ValueProperty<uint32  >(module,dpm,ttUInt);break;
+                        //case ttUInt64:    dcii=new ValueProperty<uint64  >(module,dpm,ttUInt64);break;
 
-                        case ttFloat:   dcii=new DevilValueProperty<float   >(module,dpm,ttFloat);break;
-                        //case ttDouble:    dcii=new DevilValueProperty<double  >(module,dpm,ttDouble);break;
+                        case ttFloat:   dcii=new ValueProperty<float   >(module,dpm,ttFloat);break;
+                        //case ttDouble:    dcii=new ValueProperty<double  >(module,dpm,ttDouble);break;
 
                         default:LogError(U16_TEXT("%s"),
                                          (U16_TEXT("if 比较指令暂时不支持<")+U16String(GetTokenName(dpm->type))
@@ -813,22 +810,22 @@ namespace hgl
         else
         if(type==ttTrue||type==ttFalse) //布尔型
         {
-            dcii=new DevilBool(module,name.c_str());
+            dcii=new Bool(module,name.c_str());
         }
         else
         if(type==ttIntConstant)         //整数
         {
-            dcii=new DevilUInteger(module,name.c_str());
+            dcii=new UInteger(module,name.c_str());
         }
         else
         if(type==ttFloatConstant)       //浮点数
         {
-            dcii=new DevilFloat(module,name.c_str());
+            dcii=new Float(module,name.c_str());
         }
         else
         if(type==ttDoubleConstant)      //浮点数
         {
-            dcii=new DevilDouble(module,name.c_str());
+            dcii=new Double(module,name.c_str());
         }
         else
         if(type==ttMinus)               // -号
@@ -840,24 +837,24 @@ namespace hgl
 
             if(type==ttIntConstant)         //整数
             {
-                dcii=new DevilInteger(module,str.c_str());
+                dcii=new Integer(module,str.c_str());
             }
             else
             if(type==ttFloatConstant)       //浮点数
             {
-                dcii=new DevilFloat(module,str.c_str());
+                dcii=new Float(module,str.c_str());
             }
             else
             if(type==ttDoubleConstant)      //浮点数
             {
-                dcii=new DevilDouble(module,str.c_str());
+                dcii=new Double(module,str.c_str());
             }
         }
 
         return(dcii);
     }
 
-    eTokenType DevilParse::ParseCompType()
+    eTokenType Parse::ParseCompType()
     {
         eTokenType type;
         U16String name;
@@ -873,4 +870,4 @@ namespace hgl
         else
             return(ttUnrecognizedToken);
     }
-}//namespace hgl
+}//namespace hgl::devil

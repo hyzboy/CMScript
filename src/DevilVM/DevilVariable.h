@@ -4,11 +4,13 @@
 #include<hgl/type/String.h>
 namespace hgl
 {
-    class DevilEngine;
+namespace devil
+{
+    class Engine;
 
-    class DevilVariable
+    class Variable
     {
-        DevilEngine *vm;
+        Engine *vm;
 
     public:
 
@@ -16,7 +18,8 @@ namespace hgl
 
     public:
 
-        DevilVariable(DevilEngine *dvm,const U16String &name){vm=dvm;var_name=name;}
-    };//class DevilVariable
+        Variable(Engine *dvm,const U16String &name){vm=dvm;var_name=name;}
+    };//class Variable
+}//namespace devil
 }//namespace hgl
 #endif//DevilVariableH

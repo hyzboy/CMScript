@@ -18,29 +18,31 @@ namespace hgl
         class DataOutputStream;
     }//namespace io
 
-    class DevilFunc;
-    class DevilEnum;
-    class DevilValueInterface;
-    class DevilScriptFuncCall;
-    class DevilGoto;
-    class DevilCompGoto;
-    class DevilReturn;
-    struct DevilPropertyMap;
-    struct DevilFuncMap;
+namespace devil
+{
+    class Func;
+    class Enum;
+    class ValueInterface;
+    class ScriptFuncCall;
+    class Goto;
+    class CompGoto;
+    class Return;
+    struct PropertyMap;
+    struct FuncMap;
 
     /**
     * 虚拟机状态
     */
-    enum DevilVMState
+    enum VMState
     {
         dvsRun,     //运行
         dvsPause,   //暂停
         dvsStop,    //停止
-    };//enum DevilVMState
+    };//enum VMState
 
     struct ScriptFuncRunState
     {
-        DevilFunc *func;    //函数指针
+        Func *func;         //函数指针
 
         int index;          //运行到的指令编号
 
@@ -53,14 +55,14 @@ namespace hgl
     /**
      * 虚拟机处理模块
      */
-    class DevilModule
+    class Module
     {
         OBJECT_LOGGER
 
-        UnorderedMap<U16String,DevilPropertyMap *>   prop_map;       //属性映射表
-        UnorderedMap<U16String,DevilFuncMap *>       func_map;       //函数映射表
-        UnorderedMap<U16String,DevilFunc *>          script_func;    //脚本函数表
-        UnorderedMap<U16String,DevilEnum *>          enum_map;       //枚举映射表
+        UnorderedMap<U16String,PropertyMap *>   prop_map;       //属性映射表
+        UnorderedMap<U16String,FuncMap *>       func_map;       //函数映射表
+        UnorderedMap<U16String,Func *>          script_func;    //脚本函数表
+        UnorderedMap<U16String,Enum *>          enum_map;       //枚举映射表
 
     private:
 
@@ -76,12 +78,12 @@ namespace hgl
 
     public:
 
-        DevilModule(){OnTrueFuncCall=nullptr;}
-        virtual ~DevilModule()=default;
+        Module(){OnTrueFuncCall=nullptr;}
+        virtual ~Module()=default;
 
-        DevilFunc *GetScriptFunc(const U16String &);
-        DevilFuncMap *GetFuncMap(const U16String &);
-        DevilPropertyMap *GetPropertyMap(const U16String &);
+        Func *GetScriptFunc(const U16String &);
+        FuncMap *GetFuncMap(const U16String &);
+        PropertyMap *GetPropertyMap(const U16String &);
 
         virtual bool MapProperty(const u16char *,void *);                      ///<映射属性(真实变量的映射，在整个模块中全局有效)
         virtual bool MapFunc(const u16char *,void *);                          ///<映射C函数
@@ -90,7 +92,7 @@ namespace hgl
 
         virtual bool AddScript(const u16char *,int=-1);                        ///<添加脚本并编译
 
-        virtual bool AddEnum(const u16char *,DevilEnum *);
+        virtual bool AddEnum(const u16char *,Enum *);
 
         virtual void Clear();                                                  ///<清除所有模块和映射
 
@@ -103,21 +105,21 @@ namespace hgl
         virtual void LogScriptFuncList();                                      ///<输出脚本函数列表
 
         #endif//_DEBUG
-    };//class DevilModule
+    };//class Module
 
     /**
      * 虚拟机执行控制上下文
      */
-    class DevilContext
+    class Context
     {
         OBJECT_LOGGER
 
-        DevilModule *module;
+        Module *module;
 
-        friend class DevilScriptFuncCall;
-        friend class DevilGoto;
-        friend class DevilCompGoto;
-        friend class DevilReturn;
+        friend class ScriptFuncCall;
+        friend class Goto;
+        friend class CompGoto;
+        friend class Return;
 
     private:
 
@@ -126,37 +128,37 @@ namespace hgl
         void ClearStack();                                          //清空运行堆栈
         bool RunContext();                                          //运行
 
-        bool Start(DevilFunc *,const va_list &);
+        bool Start(Func *,const va_list &);
 
     private:    //内部方法
 
-        void ScriptFuncCall(DevilFunc *);
-        bool Goto(DevilFunc *,int);
-        bool Goto(DevilFunc *);
+        void ScriptFuncCall(Func *);
+        bool Goto(Func *,int);
+        bool Goto(Func *);
         bool Return();
 
     protected:
 
-        DevilVMState State;                                         ///<虚拟机状态
+        VMState State;                                              ///<虚拟机状态
 
     public:
 
-        explicit DevilContext(DevilModule *dm=nullptr)
+        explicit Context(Module *dm=nullptr)
             : module(dm), cur_state(nullptr), State(dvsStop)
         {
         }
 
-        virtual ~DevilContext()=default;
+        virtual ~Context()=default;
 
-        void SetModule(DevilModule *dm)
+        void SetModule(Module *dm)
         {
             module=dm;
         }
 
-        virtual bool Start(DevilFunc *,...);
+        virtual bool Start(Func *,...);
         virtual bool Start(const u16char *);
         virtual bool Start(const u16char *,const u16char *);                 ///<开始运行虚拟机
-        virtual bool StartFlag(DevilFunc *,const u16char *);
+        virtual bool StartFlag(Func *,const u16char *);
         virtual bool StartFlag(const u16char *,const u16char *);
         virtual bool Run(const u16char *func_name=0);                        ///<运行虚拟机，如Start或End状态则从开始运行，Pause状态会继续运行
         virtual void Pause();                                                ///<暂停虚拟机，仅能从Run状态变为Pause，其它情况会失败
@@ -169,7 +171,8 @@ namespace hgl
 
         virtual bool SaveState(io::DataOutputStream *);                      ///<保存状态
         virtual bool LoadState(io::DataInputStream *);                       ///<加载状态
-    };//class DevilContext
+    };//class Context
 
-    const int DevilScriptMinLength=sizeof(u"func main(){}");                ///<《魔鬼》最小脚本长度
+    const int ScriptMinLength=sizeof(u"func main(){}");                ///<《魔鬼》最小脚本长度
+}//namespace devil
 }//namespace hgl

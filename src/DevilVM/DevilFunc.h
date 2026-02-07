@@ -8,30 +8,32 @@
 
 namespace hgl
 {
-    class DevilModule;
+namespace devil
+{
+    class Module;
 
     /**
     * 虚拟机内脚本函数定义
     */
-    class DevilFunc
+    class Func
     {
         OBJECT_LOGGER
 
-        DevilModule *module;
+        Module *module;
 
     public:
 
         U16String func_name;
 
-        ManagedArray<DevilCommand> command;
+        ManagedArray<Command> command;
 
         UnorderedMap<U16String,int> goto_flag;
 
-        UnorderedMap<U16String,DevilValueInterface *> script_value_list;
+        UnorderedMap<U16String,ValueInterface *> script_value_list;
 
     public:
 
-        DevilFunc(DevilModule *dvm,const U16String &name){module=dvm;func_name=name;}
+        Func(Module *dvm,const U16String &name){module=dvm;func_name=name;}
 
         bool AddGotoFlag(const U16String &);      //增加跳转旗标
         int FindGotoFlag(const U16String &);      //查找跳转旗标
@@ -39,13 +41,14 @@ namespace hgl
         void AddGotoCommand(const U16String &);   //增加跳转指令
         void AddReturn();                           //增加返回指令
 
-        int AddCommand(DevilCommand *cmd)           //直接增加指令
+        int AddCommand(Command *cmd)           //直接增加指令
         {
             return command.Add(cmd);
         }
 
-        void AddScriptFuncCall(DevilFunc *);        //增加脚本函数呼叫
+        void AddScriptFuncCall(Func *);        //增加脚本函数呼叫
 
-        DevilValueInterface *AddValue(eTokenType,const U16String &);          //增加一个变量
-    };//class DevilFunc
+        ValueInterface *AddValue(eTokenType,const U16String &);          //增加一个变量
+    };//class Func
+}//namespace devil
 }//namespace hgl
