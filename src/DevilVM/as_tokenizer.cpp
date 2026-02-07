@@ -54,7 +54,7 @@ namespace angle_script
     {
     }
 
-    const u16char *asGetTokenDefinition(int tokenType)
+    const char *asGetTokenDefinition(int tokenType)
     {
         if( tokenType == ttUnrecognizedToken            ) return U16_TEXT("<unrecognized token>");
         if( tokenType == ttEnd                          ) return U16_TEXT("<end of file>");
@@ -77,7 +77,7 @@ namespace angle_script
         return 0;
     }
 
-    const u16char *GetTokenName(eTokenType type)
+    const char *GetTokenName(eTokenType type)
     {
         for(hgl::uint i=0;i<numTokenWords;i++)
             if(tokenWords[i].tokenType==type)
@@ -86,7 +86,7 @@ namespace angle_script
         return(nullptr);
     }
 
-    eTokenType asCTokenizer::GetToken(const u16char *source, hgl::uint sourceLength, hgl::uint *tokenLength)
+    eTokenType asCTokenizer::GetToken(const char *source, hgl::uint sourceLength, hgl::uint *tokenLength)
     {
 //      assert(source != 0);
 //      assert(tokenLength != 0);
@@ -292,7 +292,7 @@ namespace angle_script
             return true;
         }
 
-        // U16String constant between double-quotes
+        // string constant between double-quotes
         if( source[0] == '"' )
         {
             // Is it a normal string constant or a heredoc string constant?
@@ -362,8 +362,8 @@ namespace angle_script
             // Make sure the identifier isn't a reserved keyword
             if( tokenLength > 50 ) return true;
 
-            u16char test[51];
-            memcpy(test, source, tokenLength*sizeof(u16char));
+            char test[51];
+            memcpy(test, source, tokenLength*sizeof(char));
             test[tokenLength] = 0;
 
             for( hgl::uint i = 0; i < numTokenWords; i++ )

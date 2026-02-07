@@ -1,4 +1,5 @@
-#include<hgl/platform/Platform.h>
+#include <cstdint>
+#include <hgl/platform/Platform.h>
 
 /*
  * Implements the AMD64 calling convention for gcc-based 64bit Unices
@@ -10,11 +11,11 @@
 
 using namespace hgl;
 
-typedef uint64 ( *funcptr_t )( void );
+typedef uint64_t ( *funcptr_t )( void );
 
-static uint64 __attribute__((noinline)) CallX64(const uint64 *args, int cnt, funcptr_t func, uint64 &retQW2, bool returnFloat)
+static uint64_t __attribute__((noinline)) CallX64(const uint64_t *args, int cnt, funcptr_t func, uint64_t &retQW2, bool returnFloat)
 {
-    uint64   retQW1;
+    uint64_t retQW1;
 
     // Reference: http://www.x86-64.org/documentation/abi.pdf
 
@@ -92,7 +93,7 @@ static uint64 __attribute__((noinline)) CallX64(const uint64 *args, int cnt, fun
         "  movq %%rdx, %4 \n"
         "endcall: \n"
 
-        : : "r" ((uint64)cnt), "r" (args), "r" (func), "m" (retQW1), "m" (retQW2), "m" (returnFloat)
+        : : "r" (static_cast<uint64_t>(cnt)), "r" (args), "r" (func), "m" (retQW1), "m" (retQW2), "m" (returnFloat)
         : "%xmm0", "%xmm1", "%xmm2", "%xmm3", "%xmm4", "%xmm5", "%xmm6", "%xmm7",
           "%rdi", "%rsi", "%rax", "%rdx", "%rcx", "%r8", "%r9", "%r10", "%r11", "%r15");
 

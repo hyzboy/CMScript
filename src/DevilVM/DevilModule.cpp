@@ -1,6 +1,7 @@
-#include"DevilModule.h"
+#include <hgl/devil/DevilModule.h>
 #include"DevilParse.h"
 #include"DevilFunc.h"
+#include <cstring>
 
 namespace hgl
 {
@@ -12,11 +13,11 @@ namespace devil
     * @param address 属性的地址
     * @return 是否创建映射成功
     */
-    bool Module::MapProperty(const u16char *intro,void *address)
+    bool Module::MapProperty(const char *intro,void *address)
     {
         Parse parse(this,intro);
         eTokenType type;
-        U16String name;
+        std::string name;
 
         type=parse.GetToken(name);
 
@@ -24,14 +25,14 @@ namespace devil
 
         if(prop_map.find(name)!=prop_map.end())     //在已有记录找到同名的映射
         {
-            LogError(U16_TEXT("%s"),
-                     (U16_TEXT("重复属性名映射: ")+U16String(intro)).c_str());
+            LogError("%s",
+                     ("重复属性名映射: "+std::string(intro)).c_str());
             return(false);
         }
         else
         {
-                LogInfo(U16_TEXT("%s"),
-                    (U16_TEXT("映射属性: ")+U16String(intro)).c_str());
+                LogInfo("%s",
+                    ("映射属性: "+std::string(intro)).c_str());
         }
 
         {
@@ -46,13 +47,13 @@ namespace devil
         }
     }
 
-    bool Module::_MapFunc(const u16char *intro,void *this_pointer,void *func_pointer)
+    bool Module::_MapFunc(const char *intro,void *this_pointer,void *func_pointer)
     {
         Parse parse(this,intro);
         eTokenType type;
         FuncMap *dfm;
 
-        U16String name,func_name;
+        std::string name,func_name;
 
         type=parse.GetToken(name);                      //取得函数返回类型
 
@@ -60,16 +61,16 @@ namespace devil
 
         if(func_map.find(func_name)!=func_map.end())    //在已有记录找到同名的映射
         {
-            LogError(U16_TEXT("%s"),
-                     (U16_TEXT("repeat func name:")+U16String(intro)).c_str());
+            LogError("%s",
+                     ("repeat func name:"+std::string(intro)).c_str());
             return(false);
         }
 //      else DebugLog(u"映射函数<%s>",intro);
 
         #ifdef _DEBUG
-            U16String func_intro;
+            std::string func_intro;
 
-            func_intro=U16String(GetTokenName(type))+U16_TEXT(" ")+func_name+U16_TEXT("(");
+            func_intro=std::string(GetTokenName(type)) + " " + func_name + "(";
                 //.Sprintf(u"%8s %s(",GetTokenName(type),func_name.wc_str());
         #endif//
 
@@ -89,12 +90,12 @@ namespace devil
             {
                 case ttCloseParanthesis:func_map.emplace(func_name,dfm);    //找到右括号
                                         #ifdef _DEBUG
-                                                func_intro+=U16String::charOf(U16_TEXT(')'));
+                                                func_intro.push_back(')');
 
-                                                LogInfo(U16_TEXT("%s"),
-                                                    (U16_TEXT("映射函数成功，参数")
-                                                     +U16String::numberOf(static_cast<int>(dfm->param.size()))
-                                                     +U16_TEXT("个:")+func_intro).c_str());
+                                                LogInfo("%s",
+                                                    ("映射函数成功，参数"
+                                                     +std::to_string(static_cast<int>(dfm->param.size()))
+                                                     +"个:"+func_intro).c_str());
                                         #endif//_DEBUG
                                         return(true);
                 case ttBool:
@@ -114,9 +115,9 @@ namespace devil
                 case ttString:
                                         #ifdef _DEBUG
                                             if(!dfm->param.empty())
-                                                func_intro+=U16String::charOf(U16_TEXT(','));
+                                                func_intro.push_back(',');
 
-                                            func_intro.Strcat(GetTokenName(type));
+                                            func_intro+=GetTokenName(type);
                                         #endif//_DEBUG
 
                                         dfm->param.push_back(type);         //增加一个参数类型项
@@ -134,7 +135,7 @@ namespace devil
     * @param func_pointer 函数指针
     * @return 是否映射成功
     */
-    bool Module::MapFunc(const u16char *intro,void *func_pointer)
+    bool Module::MapFunc(const char *intro,void *func_pointer)
     {
         return _MapFunc(intro,nullptr,func_pointer);
     }
@@ -146,7 +147,7 @@ namespace devil
     //* @param func_pointer 函数指针
     //* @return 是否映射成功
     //*/
-    //bool Module::MapFunc(void *data,const u16char *intro,void *func_pointer)
+    //bool Module::MapFunc(void *data,const char *intro,void *func_pointer)
     //{
     //  return _MapFunc(FuncMap::fcmFirstObject,   intro,data,func_pointer);
     //}
@@ -158,23 +159,23 @@ namespace devil
     * @param func_pointer 函数指针
     * @return 是否映射成功
     */
-    bool Module::MapFunc(const u16char *intro,void *this_pointer,void *func_pointer)
+    bool Module::MapFunc(const char *intro,void *this_pointer,void *func_pointer)
     {
         return _MapFunc(intro,this_pointer,func_pointer);
     }
 
-    Func *Module::GetScriptFunc(const U16String &name)
+    Func *Module::GetScriptFunc(const std::string &name)
     {
         const auto it=script_func.find(name);
         if(it!=script_func.end())
             return it->second;
 
-        LogError(U16_TEXT("%s"),
-             (U16_TEXT("没有找到指定脚本函数: ")+name).c_str());
+           LogError("%s",
+               ("没有找到指定脚本函数: "+name).c_str());
         return(nullptr);
     }
 
-    FuncMap *Module::GetFuncMap(const U16String &name)
+        FuncMap *Module::GetFuncMap(const std::string &name)
     {
         const auto it=func_map.find(name);
         if(it!=func_map.end())
@@ -183,12 +184,12 @@ namespace devil
             return(nullptr);
     }
 
-    bool Module::AddEnum(const u16char *enum_name,Enum *script_enum)
+    bool Module::AddEnum(const char *enum_name,EnumDef *script_enum)
     {
         if(enum_map.find(enum_name)!=enum_map.end())
         {
-            LogError(U16_TEXT("%s"),
-                     (U16_TEXT("枚举名称重复: ")+U16String(enum_name)).c_str());
+            LogError("%s",
+                     ("枚举名称重复: "+std::string(enum_name)).c_str());
             return(false);
         }
 
@@ -196,7 +197,7 @@ namespace devil
         return(true);
     }
 
-    PropertyMap *Module::GetPropertyMap(const U16String &name)
+    PropertyMap *Module::GetPropertyMap(const std::string &name)
     {
         const auto it=prop_map.find(name);
         if(it!=prop_map.end())
@@ -211,7 +212,7 @@ namespace devil
     * @param source_length 脚本长度，-1表示自动检测
     * @return 是否添加并编译成功
     */
-    bool Module::AddScript(const u16char *source,int source_length)
+    bool Module::AddScript(const char *source,int source_length)
     {
         if(!source)return(false);
 
@@ -222,7 +223,7 @@ namespace devil
             return(false);
 
         Parse parse(this,source,source_length);
-        U16String name;
+        std::string name;
 
         while(true)
         {
@@ -236,25 +237,25 @@ namespace devil
                 {
                     Func *func=new Func(this,name);
 
-                    LogInfo(U16_TEXT("%s"),(U16_TEXT("func ")+name+U16_TEXT("()\n{")).c_str());
+                    LogInfo("%s",("func "+name+"()\n{").c_str());
 
                     if(parse.ParseFunc(func))                   //解析函数
                     {
                         script_func.emplace(name,func);
 
-                        LogInfo(U16_TEXT("%s"),U16_TEXT("}\n"));
+                        LogInfo("%s","}\n");
                     }
                     else
                     {
                         delete func;
 
-                        LogError(U16_TEXT("%s"),(U16_TEXT("解晰函数失败: ")+name).c_str());
+                        LogError("%s",("解晰函数失败: "+name).c_str());
                         return(false);
                     }
                 }
                 else
                 {
-                    LogError(U16_TEXT("%s"),(U16_TEXT("脚本函数名称重复: ")+name).c_str());
+                    LogError("%s",("脚本函数名称重复: "+name).c_str());
                     return(false);
                 }
 
@@ -279,7 +280,7 @@ namespace devil
     void Module::Clear()
     {
         script_func.clear();
-        string_list.Clear();
+        string_list.clear();
     }
 
 #ifdef _DEBUG
@@ -287,18 +288,18 @@ namespace devil
     {
         int n=static_cast<int>(prop_map.size());
 
-        LogInfo(U16_TEXT("%s"),(U16_TEXT("\n映射属性列表数量:")+U16String::numberOf(n)).c_str());
+        LogInfo("%s",("\n映射属性列表数量:"+std::to_string(n)).c_str());
 
         int i=0;
         for(const auto &kv:prop_map)
         {
-            const U16String &name=kv.first;
+            const std::string &name=kv.first;
             const PropertyMap *dpm=kv.second;
 
-            LogInfo(U16_TEXT("%s"),
-                (U16_TEXT("\t")+U16String::numberOf(i)
-                 +U16_TEXT("\t")+U16String(GetTokenName(dpm->type))
-                 +U16_TEXT("\t")+name).c_str());
+            LogInfo("%s",
+                ("\t"+std::to_string(i)
+                 +"\t"+std::string(GetTokenName(dpm->type))
+                 +"\t"+name).c_str());
             ++i;
         }
     }
@@ -307,35 +308,35 @@ namespace devil
     {
         int n=static_cast<int>(func_map.size());
 
-        LogInfo(U16_TEXT("%s"),(U16_TEXT("\n映射函数列表数量:")+U16String::numberOf(n)).c_str());
+        LogInfo("%s",("\n映射函数列表数量:"+std::to_string(n)).c_str());
 
         int i=0;
         for(const auto &kv:func_map)
         {
-            U16String str;
-            const U16String &name=kv.first;
+            std::string str;
+            const std::string &name=kv.first;
             const FuncMap *dfm=kv.second;
 
             //str.Sprintf(u"\t%d\t%8s %s(",i,GetTokenName(dfm->result),name.wc_str());
-            str=U16String::charOf(U16_TEXT('\t'));
-            str+=U16String::numberOf(i);
-            str+=U16String::charOf(U16_TEXT('\t'));
-            str+=U16String(GetTokenName(dfm->result));
-            str+=U16String::charOf(U16_TEXT(' '));
+            str.push_back('\t');
+            str+=std::to_string(i);
+            str.push_back('\t');
+            str+=GetTokenName(dfm->result);
+            str.push_back(' ');
             str+=name;
-            str+=U16String::charOf(U16_TEXT('('));
+            str.push_back('(');
 
             for(int j=0;j<static_cast<int>(dfm->param.size());j++)
             {
-                str.Strcat(GetTokenName(dfm->param[j]));
+                str+=GetTokenName(dfm->param[j]);
 
                 if(j<static_cast<int>(dfm->param.size())-1)
-                    str+=U16String::charOf(U16_TEXT(','));
+                        str.push_back(',');
             }
 
-            str+=U16String::charOf(U16_TEXT(')'));
+                    str.push_back(')');
 
-            LogInfo(U16_TEXT("%s"),str.c_str());
+                    LogInfo("%s",str.c_str());
             ++i;
         }
     }
@@ -344,15 +345,15 @@ namespace devil
     {
         int n=static_cast<int>(script_func.size());
 
-        LogInfo(U16_TEXT("%s"),(U16_TEXT("\n脚本函数列表数量:")+U16String::numberOf(n)).c_str());
+        LogInfo("%s",("\n脚本函数列表数量:"+std::to_string(n)).c_str());
 
         int i=0;
         for(const auto &kv:script_func)
         {
-            const U16String &name=kv.first;
+            const std::string &name=kv.first;
 
-            LogInfo(U16_TEXT("%s"),
-                (U16_TEXT("\t")+U16String::numberOf(i)+U16_TEXT("\t")+name).c_str());
+            LogInfo("%s",
+                ("\t"+std::to_string(i)+"\t"+name).c_str());
             ++i;
         }
     }

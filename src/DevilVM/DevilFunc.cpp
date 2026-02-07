@@ -1,11 +1,11 @@
 ﻿#include"DevilFunc.h"
-#include"DevilModule.h"
+#include <hgl/devil/DevilModule.h>
 
 namespace hgl
 {
 namespace devil
 {
-    bool Func::AddGotoFlag(const U16String &name)
+    bool Func::AddGotoFlag(const std::string &name)
     {
         int count=static_cast<int>(command.size());
 
@@ -13,19 +13,19 @@ namespace devil
         {
             goto_flag.emplace(name,count);
 
-            LogInfo(U16_TEXT("%s"),(U16_TEXT(":")+name).c_str());
+            LogInfo("%s",(":"+name).c_str());
 
             return(true);
         }
         else
         {
-            LogInfo(U16_TEXT("%s"),(U16_TEXT("添加跳转标识符失败，这个标识符重复了:")+name).c_str());
+            LogInfo("%s",("添加跳转标识符失败，这个标识符重复了:"+name).c_str());
 
             return(false);
         }
     }
 
-    int Func::FindGotoFlag(const U16String &name)
+    int Func::FindGotoFlag(const std::string &name)
     {
         int index;
 
@@ -36,14 +36,14 @@ namespace devil
         return -1;
     }
 
-    void Func::AddGotoCommand(const U16String &name)
+    void Func::AddGotoCommand(const std::string &name)
     {
         #ifdef _DEBUG
         command.emplace_back(std::make_unique<Goto>(module,this,name));
         const int index=static_cast<int>(command.size()-1);
 
-        LogInfo(U16_TEXT("%s"),
-            (U16String::numberOf(index)+U16_TEXT("\tgoto ")+name+U16_TEXT(";"))
+        LogInfo("%s",
+            (std::to_string(index)+"\tgoto "+name+";")
                 .c_str());
         #else
         command.emplace_back(std::make_unique<Goto>(module,this,name));
@@ -56,8 +56,8 @@ namespace devil
         command.emplace_back(std::make_unique<Return>(module));
         const int index=static_cast<int>(command.size()-1);
 
-        LogInfo(U16_TEXT("%s"),(U16String::numberOf(index)+U16_TEXT("\treturn;"))
-                .c_str());
+        LogInfo("%s",(std::to_string(index)+"\treturn;")
+            .c_str());
         #else
         command.emplace_back(std::make_unique<Return>(module));
         #endif//_DEBUG
@@ -69,25 +69,25 @@ namespace devil
         command.emplace_back(std::make_unique<ScriptFuncCall>(module,script_func));
         const int index=static_cast<int>(command.size()-1);
 
-        LogInfo(U16_TEXT("%s"),
-            (U16String::numberOf(index)+U16_TEXT("\t call ")+script_func->func_name)
+        LogInfo("%s",
+            (std::to_string(index)+"\t call "+script_func->func_name)
                 .c_str());
         #else
         command.emplace_back(std::make_unique<ScriptFuncCall>(module,script_func));
         #endif//
     }
 
-    ValueInterface *Func::AddValue(eTokenType type,const U16String &name)
+    ValueInterface *Func::AddValue(eTokenType type,const std::string &name)
     {
         if(script_value_list.find(name)!=script_value_list.end())
         {
-            LogError(U16_TEXT("%s"),(U16_TEXT("添加变量失败，变量名称重复:")+name).c_str());
+            LogError("%s",("添加变量失败，变量名称重复:"+name).c_str());
 
             return(nullptr);
         }
 
         if(type==ttBool     )return(new ScriptValue<bool       >(module,func_name,name,type));else
-        if(type==ttString   )return(new ScriptValue<U16String>(module,func_name,name,type));else
+        if(type==ttString   )return(new ScriptValue<std::string>(module,func_name,name,type));else
         if(type==ttInt      )return(new ScriptValue<int        >(module,func_name,name,type));else
         if(type==ttUInt     )return(new ScriptValue<uint       >(module,func_name,name,type));else
         if(type==ttInt8     )return(new ScriptValue<int8       >(module,func_name,name,type));else
@@ -99,9 +99,9 @@ namespace devil
         if(type==ttFloat    )return(new ScriptValue<float      >(module,func_name,name,type));else
         if(type==ttDouble   )return(new ScriptValue<double     >(module,func_name,name,type));else
         {
-            LogError(U16_TEXT("%s"),
-                     (U16_TEXT("变量类型无法识别,name=")+name+U16_TEXT(",id=")
-                      +U16String::numberOf(type)).c_str());
+            LogError("%s",
+                     ("变量类型无法识别,name="+name+",id="
+                      +std::to_string(type)).c_str());
             return(nullptr);
         }
     }

@@ -1,7 +1,5 @@
 #include <iostream>
 
-#include <hgl/type/String.h>
-
 #include <hgl/devil/DevilVM.h>
 
 namespace
@@ -20,20 +18,19 @@ int main()
 {
     hgl::devil::Module module;
 
-    if(!module.MapFunc(U16_TEXT("void set(int)"), (void *)(&SetValue)))
+    if(!module.MapFunc("void set(int)", (void *)(&SetValue)))
     {
         std::cerr << "MapFunc failed." << std::endl;
         return 1;
     }
 
-    const u16char *script = U16_TEXT(
+    const char *script =
         "func main(){"
         " goto L2;"
         " L1: set(1); goto END;"
         " L2: set(2); goto L1;"
         " END:;"
-        " }"
-    );
+        " }";
 
     if(!module.AddScript(script))
     {
@@ -43,7 +40,7 @@ int main()
 
     hgl::devil::Context context(&module);
 
-    if(!context.Start(U16_TEXT("main")))
+    if(!context.Start("main"))
     {
         std::cerr << "Script execution failed." << std::endl;
         return 1;

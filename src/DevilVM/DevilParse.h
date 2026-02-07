@@ -1,26 +1,24 @@
-﻿#ifndef DevilParseH
-#define DevilParseH
+﻿#pragma once
 
 #include"as_tokenizer.h"
 #include"DevilFunc.h"
-#include<hgl/type/String.h>
+#include <string>
 #include<hgl/platform/compiler/EventFunc.h>
 #include<hgl/log/Log.h>
 
-using namespace angle_script;
-namespace hgl
+namespace hgl::devil
 {
-namespace devil
-{
+    using namespace angle_script;
+
     class Parse
     {
         OBJECT_LOGGER
 
         Module * module;
 
-        const u16char *     source_start;
+        const char *        source_start;
 
-        const u16char *     source_cur;
+        const char *        source_cur;
         uint                source_length;
 
         asCTokenizer        parse;
@@ -30,14 +28,14 @@ namespace devil
         bool                    ParseCode(Func *);                                             //解析一段代码
 
         template<typename T>
-        bool                    ParseNumber(T &,const U16String &);
+        bool                    ParseNumber(T &,const std::string &);
 
         ValueInterface *   ParseValue();                                                       //解析一个量(属性/数值/真实函数调用)
-        void                    ParseValue(Func *,eTokenType,U16String &);
+        void                    ParseValue(Func *,eTokenType,std::string &);
         void                    ParseEnum();
 
         #ifdef _DEBUG
-        Command *          ParseFuncCall(U16String &,FuncMap *,U16String &);
+        Command *          ParseFuncCall(std::string &,FuncMap *,std::string &);
         #else
         Command *          ParseFuncCall(FuncMap *);
         #endif//
@@ -48,15 +46,13 @@ namespace devil
 
     public:
 
-        Parse(Module *,const u16char *,int=-1);
+        Parse(Module *,const char *,int=-1);
 
-        eTokenType GetToken(U16String &);     //取得一个token,自动跳过注释、换行、空格
-        eTokenType CheckToken(U16String &);   //检测下一个token,自动跳过注释、换行、空格,但不取出
+        eTokenType GetToken(std::string &);     //取得一个token,自动跳过注释、换行、空格
+        eTokenType CheckToken(std::string &);   //检测下一个token,自动跳过注释、换行、空格,但不取出
 
-        bool GetToken(eTokenType,U16String &);    //找某一种Token为止
+        bool GetToken(eTokenType,std::string &);    //找某一种Token为止
 
         bool ParseFunc(Func *);        //解析一个函数
     };
-    }//namespace devil
-    }//namespace hgl
-#endif
+}//namespace hgl::devil

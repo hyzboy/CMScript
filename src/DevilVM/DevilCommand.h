@@ -1,15 +1,15 @@
 ﻿#pragma once
 
-#include<hgl/type/String.h>
+#include <string>
+#include <hgl/type/Str.Number.h>
 #include <vector>
 #include"as_tokenizer.h"
 #include<hgl/log/Log.h>
 
-using namespace angle_script;
-namespace hgl
+namespace hgl::devil
 {
-namespace devil
-{
+    using namespace angle_script;
+
     class Module;
     class Context;
     class Func;
@@ -23,8 +23,8 @@ namespace devil
 
         char    c;
         char *  str;
-        u16char wc;
-        u16char *wide_str;
+        char    wc;
+        char *  wide_str;
         int     i;
         int *   int_pointer;
         uint    u;
@@ -190,19 +190,19 @@ namespace devil
                                             \
                                         public: \
                                         \
-                                            name(Module *dm,const u16char *str):Value<T>(dm,tt) \
+                                            name(Module *dm,const char *str):Value<T>(dm,tt) \
                                             {   \
                                                 proc(str,value);    \
                                             }   \
                                         };
 
-    DEVIL_VALUE(ValueInteger,   int,    ttInt,      stoi);              //真实数值,有符号整数
-    DEVIL_VALUE(ValueUInteger,  uint,   ttUInt,     stou);              //真实数值,无符号整数
-    DEVIL_VALUE(ValueFloat,     float,  ttFloat,    stof);              //真实数值,浮点数
-    DEVIL_VALUE(ValueBool,      bool,   ttBool ,    stob);              //真实数值,布尔型
-    DEVIL_VALUE(ValueInt64,     int64,  ttInt64,    stoi);
-    DEVIL_VALUE(ValueUInt64,    uint64, ttUInt64,   stou);
-    DEVIL_VALUE(ValueDouble,    double, ttDouble,   stof);
+    DEVIL_VALUE(ValueInteger,   int,    ttInt,      hgl::stoi);              //真实数值,有符号整数
+    DEVIL_VALUE(ValueUInteger,  uint,   ttUInt,     hgl::stou);              //真实数值,无符号整数
+    DEVIL_VALUE(ValueFloat,     float,  ttFloat,    hgl::stof);              //真实数值,浮点数
+    DEVIL_VALUE(ValueBool,      bool,   ttBool ,    hgl::stob);              //真实数值,布尔型
+    DEVIL_VALUE(ValueInt64,     int64,  ttInt64,    hgl::stoi);
+    DEVIL_VALUE(ValueUInt64,    uint64, ttUInt64,   hgl::stou);
+    DEVIL_VALUE(ValueDouble,    double, ttDouble,   hgl::stof);
 
     #undef DEVIL_VALUE
 
@@ -249,8 +249,8 @@ namespace devil
 
     template<typename T> class ScriptValue:public Value<T>                                //变量：脚本变量
     {
-        U16String func_name;
-        U16String value_name;
+        std::string func_name;
+        std::string value_name;
 
         T value;
 
@@ -258,11 +258,11 @@ namespace devil
 
         ScriptValue()
         {
-            func_name=U16_TEXT("null");
-            value_name=U16_TEXT("null");
+            func_name="null";
+            value_name="null";
         }
 
-        ScriptValue(Module *dm,const U16String &fn,const U16String &vn,eTokenType tt):Value<T>(dm,tt)
+        ScriptValue(Module *dm,const std::string &fn,const std::string &vn,eTokenType tt):Value<T>(dm,tt)
         {
             func_name=fn;
             value_name=vn;
@@ -349,13 +349,13 @@ namespace devil
 
         Module *module;
         Func *func;
-        U16String name;
+        std::string name;
 
         int index;
 
     public:
 
-        Goto(Module *,Func *,const U16String &);
+        Goto(Module *,Func *,const std::string &);
 
         void UpdateGotoFlag();
 
@@ -374,7 +374,7 @@ namespace devil
 
     public:
 
-        U16String else_flag;
+        std::string else_flag;
 
     public:
 
@@ -414,5 +414,4 @@ namespace devil
 
         bool Run(Context *) override;
     };
-}//namespace devil
-}//namespace hgl
+}//namespace hgl::devil

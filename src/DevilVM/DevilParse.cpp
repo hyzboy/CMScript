@@ -1,14 +1,17 @@
 ﻿#include"DevilParse.h"
-#include"DevilModule.h"
+#include <hgl/devil/DevilModule.h>
 #include <memory>
+#include <cstring>
+#include <hgl/type/Str.Number.h>
 
 namespace hgl::devil
 {
-    void ConvertString(U16String &targe,u16char *source,int length)
+    void ConvertString(std::string &targe,const char *source,int length)
     {
-        u16char *temp;
-        u16char *sp,*tp;
-        const u16char conv[][2]=
+        char *temp;
+        const char *sp;
+        char *tp;
+        const char conv[][2]=
         {
             {'t',   '\t'},
             {'n',   '\n'},
@@ -19,7 +22,7 @@ namespace hgl::devil
             {0,0}
         };
 
-        temp=new u16char[length+1];
+        temp=new char[length+1];
         sp=source;
         tp=temp;
 
@@ -27,7 +30,7 @@ namespace hgl::devil
         {
             if(*sp=='\\')
             {
-                u16char sc=*(sp+1);
+                char sc=*(sp+1);
                 int select;
 
                 for(select=0;;select++)
@@ -58,12 +61,12 @@ namespace hgl::devil
         }
 
         *tp=0;
-        targe=temp;
+        targe.assign(temp);
 
         delete[] temp;
     }
 
-    Parse::Parse(Module *dm,const u16char *str,int len)
+    Parse::Parse(Module *dm,const char *str,int len)
     {
         module=dm;
 
@@ -76,13 +79,13 @@ namespace hgl::devil
             source_length=len;
     }
 
-    eTokenType Parse::GetToken(U16String &intro)
+    eTokenType Parse::GetToken(std::string &intro)
     {
         while(true)
         {
             uint len;
             eTokenType type;
-            const u16char *source;
+            const char *source;
 
             if(source_length<=0)return(ttEnd);
 
@@ -99,14 +102,14 @@ namespace hgl::devil
             if(type<=ttMultilineComment)        //跳过注释，空格，换行
                 continue;
 
-            intro=U16String(source,(int)len);
+            intro.assign(source,static_cast<size_t>(len));
             return type;
         }
     }
 
-    eTokenType Parse::CheckToken(U16String &intro)
+    eTokenType Parse::CheckToken(std::string &intro)
     {
-        const u16char *cur=source_cur;
+        const char *cur=source_cur;
         uint len=source_length;
         eTokenType type;
 
@@ -118,7 +121,7 @@ namespace hgl::devil
         return(type);
     }
 
-    bool Parse::GetToken(eTokenType tt,U16String &name)
+    bool Parse::GetToken(eTokenType tt,std::string &name)
     {
         eTokenType type;
 
@@ -134,11 +137,11 @@ namespace hgl::devil
         }
     }
 
-    void Parse::ParseValue(Func *func,eTokenType value_type,U16String &/*type_name*/)
+    void Parse::ParseValue(Func *func,eTokenType value_type,std::string &/*type_name*/)
     {
         eTokenType type;
 
-        U16String value_name;
+        std::string value_name;
 
         type=GetToken(value_name);
 
@@ -149,9 +152,9 @@ namespace hgl::devil
 
         if(!dvi)
         {
-            LogError(U16_TEXT("%s"),
-                     (U16_TEXT("函数<")+func->func_name+U16_TEXT(">的变量<")+value_name
-                      +U16_TEXT(">定义无法解析")).c_str());
+            LogError("%s",
+                     ("函数<"+func->func_name+">的变量<"+value_name
+                      +">定义无法解析").c_str());
             return;
         }
 
@@ -164,9 +167,9 @@ namespace hgl::devil
 
         if(!dvi_value)
         {
-            LogError(U16_TEXT("%s"),
-                     (U16_TEXT("函数<")+func->func_name+U16_TEXT(">的变量<")+value_name
-                      +U16_TEXT(">定义时的赋值式无法解析")).c_str());
+            LogError("%s",
+                     ("函数<"+func->func_name+">的变量<"+value_name
+                      +">定义时的赋值式无法解析").c_str());
             return;
         }
 
@@ -178,7 +181,7 @@ namespace hgl::devil
 /*  void Parse::ParseEnum()
     {
         eTokenType type;
-        U16String name;
+        std::string name;
 
         type=GetToken(name);
 
@@ -187,7 +190,7 @@ namespace hgl::devil
 
     bool Parse::ParseFunc(Func *func)
     {
-        U16String name;
+        std::string name;
 
 //      GetToken(ttOpenParanthesis,name);       // (
                                                 // 脚本函数暂时不支持参数
@@ -214,7 +217,7 @@ namespace hgl::devil
 
     bool Parse::ParseCode(Func *func)
     {
-        U16String name;
+        std::string name;
         eTokenType type;
         bool ca;
         int StatmentCount;                  //花括号数量
@@ -278,7 +281,7 @@ namespace hgl::devil
                     continue;
                 else
                 {
-                    LogError(U16_TEXT("%s"),U16_TEXT("if解析错误"));
+                    LogError("%s","if解析错误");
                     return(false);
                 }
             }
@@ -304,7 +307,7 @@ namespace hgl::devil
 
             if(type==ttIdentifier)              //未知标识
             {
-                U16String temp;
+                std::string temp;
 
                 type=GetToken(temp);
 
@@ -314,7 +317,7 @@ namespace hgl::devil
                         continue;
                     else
                     {
-                        LogError(U16_TEXT("%s"),U16_TEXT("冒号后面的字段无法解析!"));
+                        LogError("%s","冒号后面的字段无法解析!");
                         return(false);
                     }
                 }
@@ -328,7 +331,7 @@ namespace hgl::devil
                         if(map_func)
                         {
                             #ifdef _DEBUG
-                            U16String intro;
+                            std::string intro;
 
                             Command *cmd=ParseFuncCall(name,map_func,intro);
                             #else
@@ -356,8 +359,8 @@ namespace hgl::devil
                                 }
 
                                 #ifdef _DEBUG
-                                LogInfo(U16_TEXT("%s"),
-                                    (U16String::numberOf(index)+U16_TEXT("\t")+intro).c_str());
+                                LogInfo("%s",
+                                    (std::to_string(index)+"\t"+intro).c_str());
                                 #endif//_DEBUG
 
                                 continue;
@@ -377,8 +380,8 @@ namespace hgl::devil
                         }
                     }
 
-                    LogWarning(U16_TEXT("%s"),
-                               (U16_TEXT("脚本调用函数没有找到相应的真实函数映射与脚本函数: ")+name).c_str());
+                    LogWarning("%s",
+                               ("脚本调用函数没有找到相应的真实函数映射与脚本函数: "+name).c_str());
 //                  return(false);      //错误也不退出，是为了把所有不支持的函数全列出来
                 }
             }
@@ -394,30 +397,30 @@ namespace hgl::devil
         return(true);
     }
 
-    template<typename T> bool ParseToNumber(T &result,const U16String &str);
+    template<typename T> bool ParseToNumber(T &result,const std::string &str);
 
-    template<> bool ParseToNumber<int>  (int &  result,const U16String &str){return str.ToInt  (result);}
-    template<> bool ParseToNumber<uint> (uint & result,const U16String &str){return str.ToUint (result);}
-    template<> bool ParseToNumber<float>(float &result,const U16String &str){return str.ToFloat(result);}
+    template<> bool ParseToNumber<int>  (int &  result,const std::string &str){return hgl::stoi(str.c_str(), result);}
+    template<> bool ParseToNumber<uint> (uint & result,const std::string &str){return hgl::stou(str.c_str(), result);}
+    template<> bool ParseToNumber<float>(float &result,const std::string &str){return hgl::stof(str.c_str(), result);}
 
     template<typename T>
-    bool Parse::ParseNumber(T &result,const U16String &str)           //由于从程式理论上讲，调用这个函数时，都是因为测出str是数值的时候，所以不可能产生解析错误的情况。
+    bool Parse::ParseNumber(T &result,const std::string &str)           //由于从程式理论上讲，调用这个函数时，都是因为测出str是数值的时候，所以不可能产生解析错误的情况。
     {
         if(ParseToNumber<T>(result,str))
             return(true);
 
-        LogError(U16_TEXT("%s"),
-             (U16_TEXT("解析数值\"")+str+U16_TEXT("\"失败!")).c_str());
+           LogError("%s",
+               ("解析数值\""+str+"\"失败!").c_str());
         return(false);
     }
 
     #ifdef _DEBUG
-    Command *Parse::ParseFuncCall(U16String &func_name,FuncMap *map,U16String &intro)
+    Command *Parse::ParseFuncCall(std::string &func_name,FuncMap *map,std::string &intro)
     #else
     Command *Parse::ParseFuncCall(FuncMap *map)
     #endif//
     {
-        U16String name;
+        std::string name;
         eTokenType type;
 
         //按个数解晰参数
@@ -443,7 +446,7 @@ namespace hgl::devil
 
         #ifdef _DEBUG
         //intro.Sprintf(u"%s(",func_name.c_str());
-        intro=func_name+U16String::charOf(U16_TEXT('('));
+        intro=func_name+"(";
         #endif//
 
 
@@ -468,8 +471,8 @@ namespace hgl::devil
                                     break;
 
                                 #ifdef _DEBUG
-                                intro.Strcat(*(bool *)(p)?U16_TEXT("true"):U16_TEXT("false"));
-                                if(i<param_count)intro.Strcat(U16_TEXT(","));
+                                intro+=( *(bool *)(p) ? "true" : "false" );
+                                if(i<param_count)intro.push_back(',');
                                 #endif//
 
                                 p++;
@@ -490,8 +493,8 @@ namespace hgl::devil
 
                                 #ifdef _DEBUG
                                 //intro.CatSprintf(u"%d",*(int *)(p));
-                                intro+=U16String::numberOf(*(int *)p);
-                                if(i<param_count)intro.Strcat(U16_TEXT(","));
+                                intro+=std::to_string(*(int *)p);
+                                if(i<param_count)intro.push_back(',');
                                 #endif//
 
                                 p++;
@@ -512,8 +515,8 @@ namespace hgl::devil
 
                                 #ifdef _DEBUG
                                 //intro.CatSprintf(u"%u",*(uint *)(p));
-                                intro+=U16String::numberOf(*(uint *)p);
-                                if(i<param_count)intro.Strcat(U16_TEXT(","));
+                                intro+=std::to_string(*(uint *)p);
+                                if(i<param_count)intro.push_back(',');
                                 #endif//
 
                                 p++;
@@ -532,8 +535,8 @@ namespace hgl::devil
 
                                 #ifdef _DEBUG
                                 //intro.CatSprintf(u"%f",*(float *)(p));
-                                intro+=U16String::floatOf(*(float *)p,6);
-                                if(i<param_count)intro.Strcat(U16_TEXT(","));
+                                intro+=std::to_string(*(float *)p);
+                                if(i<param_count)intro.push_back(',');
                                 #endif//
 
                                 p++;
@@ -541,18 +544,15 @@ namespace hgl::devil
 
                 case ttString:  if(type==ttStringConstant)
                                 {
-                                    U16String str;
-                                    int index;
+                                    std::string str;
+                                    ConvertString(str,name.c_str()+1,static_cast<int>(name.size())-2);      //去掉两边的引号，并转换\t\n之类的数据
+                                    module->string_list.push_back(str);
 
-                                    ConvertString(str,name.c_str()+1,name.Length()-2);      //去掉两边的引号，并转换\t\n之类的数据
-
-                                    index=module->string_list.Add(str.c_str());
-
-                                    *(u16char **)(p)=(u16char *)(module->string_list[index].c_str());
+                                    *(char **)(p)=(char *)(module->string_list.back().c_str());
 
                                     #ifdef _DEBUG
-                                    intro.Strcat(name);
-                                    if(i<param_count)intro.Strcat(U16_TEXT(","));
+                                    intro+=name;
+                                    if(i<param_count)intro.push_back(',');
                                     #endif//
 
                                     p++;
@@ -564,8 +564,8 @@ namespace hgl::devil
             delete[] param;
 
             #ifdef _DEBUG
-            LogNotice(U16_TEXT("%s"),
-                      (U16_TEXT("脚本中的参数和映射函数的格式要求不兼容！\n\t")+intro).c_str());
+            LogNotice("%s",
+                      ("脚本中的参数和映射函数的格式要求不兼容！\n\t"+intro).c_str());
             #endif//
 
             GetToken(ttCloseParanthesis,name);      //右括号
@@ -591,7 +591,7 @@ namespace hgl::devil
         if(map->result==ttUInt16)return(new SystemFuncCallFixed<uint16     >(map,param,param_count));else
         if(map->result==ttUInt  )return(new SystemFuncCallFixed<uint32     >(map,param,param_count));else
         if(map->result==ttFloat )return(new SystemFuncCallFixed<float      >(map,param,param_count));else
-        if(map->result==ttString)return(new SystemFuncCallFixed<u16char *  >(map,param,param_count));else
+        if(map->result==ttString)return(new SystemFuncCallFixed<char *    >(map,param,param_count));else
         {
             delete[] param;
             return(nullptr);
@@ -600,12 +600,12 @@ namespace hgl::devil
 
     bool Parse::ParseIf(Func *func)
     {
-        U16String name;
-        U16String flag;
+        std::string name;
+        std::string flag;
         CompInterface *dci;
         CompGoto *dcg;
 
-        flag=func->func_name+U16_TEXT('_')+U16String::numberOf(static_cast<int>(func->command.size()));
+        flag=func->func_name+"_"+std::to_string(static_cast<int>(func->command.size()));
 
         dci=ParseComp();                                                                            //解析比较表达式
 
@@ -618,33 +618,33 @@ namespace hgl::devil
             func->command.emplace_back(std::move(cmd));                                        //增加比较跳转控制
         }
 
-        LogInfo(U16_TEXT("%s"),(U16_TEXT("if ")+flag).c_str());
+        LogInfo("%s",("if "+flag).c_str());
 
         ParseCode(func);                                                                            //解析 then 段
 
         if(CheckToken(name)==ttElse)
         {
-            func->AddGotoCommand(flag+U16_TEXT("_end"));                                            //在else前增加goto到if/else结束处
+            func->AddGotoCommand(flag+"_end");                                                      //在else前增加goto到if/else结束处
 
             GetToken(ttElse,name);
 
-            dcg->else_flag=flag+U16_TEXT("_else");                                                  //设置比较else的话跳到else段
+            dcg->else_flag=flag+"_else";                                                            //设置比较else的话跳到else段
 
-            func->AddGotoFlag(flag+U16_TEXT("_else"));                                              //增加else段跳转旗标
+            func->AddGotoFlag(flag+"_else");                                                        //增加else段跳转旗标
 
             ParseCode(func);                                                                        //解析 else 段
         }
         else
-            dcg->else_flag=flag+U16_TEXT("_end");                                                   //设置比较else的话直接跳到最后
+            dcg->else_flag=flag+"_end";                                                             //设置比较else的话直接跳到最后
 
-        func->AddGotoFlag(flag+U16_TEXT("_end"));                                                   //增加结束跳转用旗标
+        func->AddGotoFlag(flag+"_end");                                                             //增加结束跳转用旗标
 
         return(true);
     }
 
     CompInterface *Parse::ParseComp()
     {
-        U16String name;
+        std::string name;
         int comp;
         ValueInterface *left,*right;
 
@@ -725,7 +725,7 @@ namespace hgl::devil
     ValueInterface *Parse::ParseValue()
     {
         int type;
-        U16String name,temp;
+        std::string name,temp;
 
         ValueInterface *dcii=nullptr;
 
@@ -745,7 +745,7 @@ namespace hgl::devil
                         GetToken(ttOpenParanthesis,name);   //取出 (
 
                         #ifdef _DEBUG
-                        U16String intro;
+                        std::string intro;
 
                             Command *cmd=ParseFuncCall(name,map_func,intro);
                         #else
@@ -768,13 +768,13 @@ namespace hgl::devil
 
                                 case ttFloat:   dcii=new ValueFuncMap<float    >(module,cmd,ttFloat    );break;
 
-                                case ttString:  dcii=new ValueFuncMap<u16char *>(module,cmd,ttString   );break;
+                                case ttString:  dcii=new ValueFuncMap<char *>(module,cmd,ttString   );break;
 
-                                default:        LogError(U16_TEXT("%s"),U16_TEXT("if中调用的函数返回类型无法支持"));break;
+                                default:        LogError("%s","if中调用的函数返回类型无法支持");break;
                             }
                         }
                         else
-                            LogError(U16_TEXT("%s"),U16_TEXT("if中的真实函数映射没有找到"));
+                            LogError("%s","if中的真实函数映射没有找到");
                     }
                 }
 
@@ -814,16 +814,16 @@ namespace hgl::devil
                         case ttFloat:   dcii=new ValueProperty<float   >(module,dpm,ttFloat);break;
                         //case ttDouble:    dcii=new ValueProperty<double  >(module,dpm,ttDouble);break;
 
-                        default:LogError(U16_TEXT("%s"),
-                                         (U16_TEXT("if 比较指令暂时不支持<")+U16String(GetTokenName(dpm->type))
-                                          +U16_TEXT(">类型的数据进行比较")).c_str());
+                        default:LogError("%s",
+                                         ("if 比较指令暂时不支持<"+std::string(GetTokenName(dpm->type))
+                                          +">类型的数据进行比较").c_str());
                                 return(nullptr);
                     }
                 }
                 else
                 {
-                    LogError(U16_TEXT("%s"),
-                             (U16_TEXT("没有找到属性映射:")+name).c_str());
+                    LogError("%s",
+                             ("没有找到属性映射:"+name).c_str());
                     return(nullptr);
                 }
             }
@@ -853,7 +853,8 @@ namespace hgl::devil
         {
             type=GetToken(name);
 
-            U16String str=U16String::charOf(U16_TEXT('-'));
+            std::string str;
+            str.push_back('-');
             str+=name;
 
             if(type==ttIntConstant)         //整数
@@ -878,7 +879,7 @@ namespace hgl::devil
     eTokenType Parse::ParseCompType()
     {
         eTokenType type;
-        U16String name;
+        std::string name;
 
         type=GetToken(name);
 

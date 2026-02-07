@@ -1,14 +1,11 @@
-﻿#ifndef HGL_VM_INCLUDE
-#define HGL_VM_INCLUDE
+﻿#pragma once
 
 #include<string.h>
 
 /**
 * 虚拟机共用要素
 */
-namespace hgl
-{
-namespace devil
+namespace hgl::devil
 {
 
     #define vm_method(c,m) vm_method_ptr<sizeof(void (c::*)())>::Convert((void (c::*)())(&c::m))
@@ -40,6 +37,4 @@ namespace devil
     #define BindObjectProperty(name,class,value)            BindProperty(name,vm_offset(class,class::value))
     #define BindObjectArray(name_type,name,class,get,set)   BindArray(name_type,name,vm_method(class,get),vm_method(class,set))
     #define BindObjectFunc(name,class,func)                 BindFunc(name,vm_method(class,func))
-}//namespace devil
-}//namespace hgl
-#endif//HGL_VM_INCLUDE
+}//namespace hgl::devil

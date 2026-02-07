@@ -1,15 +1,10 @@
 #include <iostream>
 #include <string>
-#include <codecvt>
-#include <locale>
-
-#include <hgl/type/String.h>
-
 #include <hgl/devil/DevilVM.h>
 
 namespace
 {
-    void PrintU16(const u16char *text)
+    void PrintU16(const char *text)
     {
         if(!text)
         {
@@ -17,9 +12,7 @@ namespace
             return;
         }
 
-        std::u16string u16(reinterpret_cast<const char16_t *>(text));
-        std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> conv;
-        std::cout << conv.to_bytes(u16.c_str()) << std::endl;
+        std::cout << text << std::endl;
     }
 }
 
@@ -27,13 +20,13 @@ int main()
 {
     hgl::devil::Module module;
 
-    if(!module.MapFunc(U16_TEXT("void print(string)"), (void *)(&PrintU16)))
+    if(!module.MapFunc("void print(string)", (void *)(&PrintU16)))
     {
         std::cerr << "MapFunc failed." << std::endl;
         return 1;
     }
 
-    const u16char *script = U16_TEXT("func main(){ print(\"hello,world!\"); }");
+    const char *script = "func main(){ print(\"hello,world!\"); }";
 
     if(!module.AddScript(script))
     {
@@ -43,7 +36,7 @@ int main()
 
     hgl::devil::Context context(&module);
 
-    if(!context.Start(U16_TEXT("main")))
+    if(!context.Start("main"))
     {
         std::cerr << "Script execution failed." << std::endl;
         return 1;

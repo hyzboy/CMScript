@@ -170,9 +170,14 @@ namespace angle_script
 
     struct sTokenWord
     {
-        const u16char *word;
+        const char *word;
         eTokenType   tokenType;
     };
+
+#ifdef U16_TEXT
+#undef U16_TEXT
+#endif//U16_TEXT
+#define U16_TEXT(x) x
 
     constexpr sTokenWord tokenWords[] =
     {
@@ -286,7 +291,7 @@ namespace angle_script
 
     constexpr int       numTokenWords   =sizeof(tokenWords)/sizeof(sTokenWord);
 
-    constexpr u16char   whiteSpace[]    =U16_TEXT(" \t\r\n\xFEFF");
+    constexpr char   whiteSpace[]    =U16_TEXT(" \t\r\n\xEF\xBB\xBF");
     constexpr int       whiteSpaceNumber=sizeof(whiteSpace)/sizeof(whiteSpace[0])-1;
 }//namespace angle_script
 #endif

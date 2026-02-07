@@ -1,5 +1,5 @@
 ﻿#include"DevilCommand.h"
-#include"DevilContext.h"
+#include <hgl/devil/DevilContext.h>
 #include"DevilFunc.h"
 
 namespace hgl
@@ -77,7 +77,7 @@ namespace hgl
 {
 namespace devil
 {
-    Goto::Goto(Module *dm,Func *df,const U16String &flag)
+    Goto::Goto(Module *dm,Func *df,const std::string &flag)
     {
         module=dm;
 
@@ -97,16 +97,16 @@ namespace devil
         }                                       // 由于跳转标识有可能在这个GOTO之后定义，所以必须等这个函数解晰完了，再调用SetLine
 
         if(index==-1)
-            LogError(U16_TEXT("%s"),
-                     (U16_TEXT("在函数<")+func->func_name+U16_TEXT(">没有找到跳转标识:")+name)
+            LogError("%s",
+                     ("在函数<"+func->func_name+">没有找到跳转标识:"+name)
                          .c_str());
     }
 
     bool Goto::Run(Context *context)
     {
         #ifdef _DEBUG
-            LogInfo(U16_TEXT("%s"),
-                    (U16_TEXT("在函数<")+func->func_name+U16_TEXT(">中跳转:")+name)
+            LogInfo("%s",
+                    ("在函数<"+func->func_name+">中跳转:"+name)
                         .c_str());
         #endif//_DEBUG
 
@@ -142,8 +142,8 @@ namespace devil
         }
 
         if(index==-1)
-            LogError(U16_TEXT("%s"),
-                     (U16_TEXT("在函数<")+func->func_name+U16_TEXT(">没有找到跳转标识:")+else_flag).c_str());
+            LogError("%s",
+                     ("在函数<"+func->func_name+">没有找到跳转标识:"+else_flag).c_str());
     }
 
     bool CompGoto::Run(Context *context)

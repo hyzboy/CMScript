@@ -1,10 +1,8 @@
-#ifndef DevilVariableH
-#define DevilVariableH
+#pragma once
 
-#include<hgl/type/String.h>
-namespace hgl
-{
-namespace devil
+#include <string>
+
+namespace hgl::devil
 {
     class Engine;
 
@@ -14,12 +12,10 @@ namespace devil
 
     public:
 
-        U16String var_name;
+        std::string var_name;
 
     public:
 
-        Variable(Engine *dvm,const U16String &name){vm=dvm;var_name=name;}
+        Variable(Engine *dvm,const std::string &name){vm=dvm;var_name=name;}
     };//class Variable
-}//namespace devil
-}//namespace hgl
-#endif//DevilVariableH
+}//namespace hgl::devil
