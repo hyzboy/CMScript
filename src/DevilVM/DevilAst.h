@@ -1,0 +1,242 @@
+﻿#pragma once
+
+#include "as_tokendef.h"
+#include "DevilValue.h"
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <variant>
+#include <vector>
+
+namespace hgl::devil
+{
+    using angle_script::eTokenType;
+
+    class Module;
+    class Context;
+    class Func;
+
+    struct ExecContext
+    {
+        Module *module=nullptr;
+        Context *context=nullptr;
+        Func *func=nullptr;
+        std::unordered_map<std::string,AstValue> locals;
+        std::string error;
+    };
+
+    enum class ExecFlow
+    {
+        Normal,
+        Return,
+        Goto,
+        Error
+    };
+
+    struct ExecResult
+    {
+        ExecFlow flow=ExecFlow::Normal;
+        AstValue value=AstValue::MakeVoid();
+        std::string label;
+        std::string error;
+
+        static ExecResult Normal();
+        static ExecResult Return(AstValue v);
+        static ExecResult Goto(const std::string &label);
+        static ExecResult Error(const std::string &message);
+    };
+
+    class Expr
+    {
+    public:
+        virtual ~Expr()=default;
+        virtual AstValue Eval(ExecContext &) const=0;
+    };
+
+    class Stmt
+    {
+    public:
+        virtual ~Stmt()=default;
+        virtual ExecResult Exec(ExecContext &) const=0;
+    };
+
+    class LiteralExpr final:public Expr
+    {
+        AstValue value;
+
+    public:
+        explicit LiteralExpr(AstValue v):value(std::move(v)){}
+        AstValue Eval(ExecContext &) const override{return value;}
+    };
+
+    class IdentifierExpr final:public Expr
+    {
+        std::string name;
+
+    public:
+        explicit IdentifierExpr(std::string n):name(std::move(n)){}
+        const std::string &GetName() const{return name;}
+        AstValue Eval(ExecContext &) const override;
+    };
+
+    class UnaryExpr final:public Expr
+    {
+        eTokenType op;
+        std::unique_ptr<Expr> expr;
+
+    public:
+        UnaryExpr(eTokenType o,std::unique_ptr<Expr> e)
+            : op(o), expr(std::move(e)){}
+        AstValue Eval(ExecContext &) const override;
+    };
+
+    class BinaryExpr final:public Expr
+    {
+        eTokenType op;
+        std::unique_ptr<Expr> left;
+        std::unique_ptr<Expr> right;
+
+    public:
+        BinaryExpr(eTokenType o,std::unique_ptr<Expr> l,std::unique_ptr<Expr> r)
+            : op(o), left(std::move(l)), right(std::move(r)){}
+        AstValue Eval(ExecContext &) const override;
+    };
+
+    class CallExpr final:public Expr
+    {
+        std::string name;
+        std::vector<std::unique_ptr<Expr>> args;
+
+    public:
+        CallExpr(std::string n,std::vector<std::unique_ptr<Expr>> a)
+            : name(std::move(n)), args(std::move(a)){}
+        const std::string &GetName() const{return name;}
+        AstValue Eval(ExecContext &) const override;
+    };
+
+    class BlockStmt;
+
+    class VarDeclStmt final:public Stmt
+    {
+        eTokenType type;
+        std::string name;
+        std::unique_ptr<Expr> init;
+
+    public:
+        VarDeclStmt(eTokenType t,std::string n,std::unique_ptr<Expr> i)
+            : type(t), name(std::move(n)), init(std::move(i)){}
+        ExecResult Exec(ExecContext &) const override;
+    };
+
+    class AssignStmt final:public Stmt
+    {
+        std::string name;
+        std::unique_ptr<Expr> value;
+
+    public:
+        AssignStmt(std::string n,std::unique_ptr<Expr> v)
+            : name(std::move(n)), value(std::move(v)){}
+        ExecResult Exec(ExecContext &) const override;
+    };
+
+    class ExprStmt final:public Stmt
+    {
+        std::unique_ptr<Expr> expr;
+
+    public:
+        explicit ExprStmt(std::unique_ptr<Expr> e):expr(std::move(e)){}
+        ExecResult Exec(ExecContext &) const override;
+    };
+
+    class ReturnStmt final:public Stmt
+    {
+        std::unique_ptr<Expr> expr;
+
+    public:
+        explicit ReturnStmt(std::unique_ptr<Expr> e):expr(std::move(e)){}
+        ExecResult Exec(ExecContext &) const override;
+    };
+
+    class GotoStmt final:public Stmt
+    {
+        std::string label;
+
+    public:
+        explicit GotoStmt(std::string l):label(std::move(l)){}
+        const std::string &GetLabel() const{return label;}
+        ExecResult Exec(ExecContext &) const override;
+    };
+
+    class LabelStmt final:public Stmt
+    {
+        std::string label;
+
+    public:
+        explicit LabelStmt(std::string l):label(std::move(l)){}
+        const std::string &GetLabel() const{return label;}
+        ExecResult Exec(ExecContext &) const override;
+    };
+
+    class IfStmt final:public Stmt
+    {
+        std::unique_ptr<Expr> cond;
+        std::unique_ptr<BlockStmt> then_block;
+        std::unique_ptr<BlockStmt> else_block;
+
+    public:
+        IfStmt(std::unique_ptr<Expr> c,std::unique_ptr<BlockStmt> t,std::unique_ptr<BlockStmt> e)
+            : cond(std::move(c)), then_block(std::move(t)), else_block(std::move(e)){}
+        ExecResult Exec(ExecContext &) const override;
+    };
+
+    class WhileStmt final:public Stmt
+    {
+        std::unique_ptr<Expr> cond;
+        std::unique_ptr<BlockStmt> body;
+
+    public:
+        WhileStmt(std::unique_ptr<Expr> c,std::unique_ptr<BlockStmt> b)
+            : cond(std::move(c)), body(std::move(b)){}
+        ExecResult Exec(ExecContext &) const override;
+    };
+
+    class ForStmt final:public Stmt
+    {
+        std::unique_ptr<Stmt> init;
+        std::unique_ptr<Expr> cond;
+        std::unique_ptr<Expr> post;
+        std::unique_ptr<BlockStmt> body;
+
+    public:
+        ForStmt(std::unique_ptr<Stmt> i,std::unique_ptr<Expr> c,std::unique_ptr<Expr> p,std::unique_ptr<BlockStmt> b)
+            : init(std::move(i)), cond(std::move(c)), post(std::move(p)), body(std::move(b)){}
+        ExecResult Exec(ExecContext &) const override;
+    };
+
+    class SwitchStmt final:public Stmt
+    {
+    public:
+        ExecResult Exec(ExecContext &) const override;
+    };
+
+    class EnumDeclStmt final:public Stmt
+    {
+    public:
+        ExecResult Exec(ExecContext &) const override;
+    };
+
+    class BlockStmt final:public Stmt
+    {
+        std::vector<std::unique_ptr<Stmt>> statements;
+
+    public:
+        explicit BlockStmt(std::vector<std::unique_ptr<Stmt>> stmts)
+            : statements(std::move(stmts)){}
+
+        const std::vector<std::unique_ptr<Stmt>> &GetStatements() const{return statements;}
+        ExecResult Exec(ExecContext &) const override;
+    };
+}
+

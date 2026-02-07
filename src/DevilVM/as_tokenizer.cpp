@@ -56,19 +56,19 @@ namespace angle_script
 
     const char *asGetTokenDefinition(int tokenType)
     {
-        if( tokenType == ttUnrecognizedToken            ) return U16_TEXT("<unrecognized token>");
-        if( tokenType == ttEnd                          ) return U16_TEXT("<end of file>");
-        if( tokenType == ttWhiteSpace                   ) return U16_TEXT("<white space>");
-        if( tokenType == ttOnelineComment               ) return U16_TEXT("<one line comment>");
-        if( tokenType == ttMultilineComment             ) return U16_TEXT("<multiple lines comment>");
-        if( tokenType == ttIdentifier                   ) return U16_TEXT("<identifier>");
-        if( tokenType == ttIntConstant                  ) return U16_TEXT("<integer constant>");
-        if( tokenType == ttFloatConstant                ) return U16_TEXT("<float constant>");
-        if( tokenType == ttDoubleConstant               ) return U16_TEXT("<double constant>");
-        if( tokenType == ttStringConstant               ) return U16_TEXT("<string constant>");
-        if( tokenType == ttNonTerminatedStringConstant  ) return U16_TEXT("<unterminated string constant>");
-        if( tokenType == ttBitsConstant                 ) return U16_TEXT("<bits constant>");
-        if( tokenType == ttHeredocStringConstant        ) return U16_TEXT("<heredoc string constant>");
+        if( tokenType == ttUnrecognizedToken            ) return "<unrecognized token>";
+        if( tokenType == ttEnd                          ) return "<end of file>";
+        if( tokenType == ttWhiteSpace                   ) return "<white space>";
+        if( tokenType == ttOnelineComment               ) return "<one line comment>";
+        if( tokenType == ttMultilineComment             ) return "<multiple lines comment>";
+        if( tokenType == ttIdentifier                   ) return "<identifier>";
+        if( tokenType == ttIntConstant                  ) return "<integer constant>";
+        if( tokenType == ttFloatConstant                ) return "<float constant>";
+        if( tokenType == ttDoubleConstant               ) return "<double constant>";
+        if( tokenType == ttStringConstant               ) return "<string constant>";
+        if( tokenType == ttNonTerminatedStringConstant  ) return "<unterminated string constant>";
+        if( tokenType == ttBitsConstant                 ) return "<bits constant>";
+        if( tokenType == ttHeredocStringConstant        ) return "<heredoc string constant>";
 
         for( hgl::uint n = 0; n < numTokenWords; n++ )
             if( tokenWords[n].tokenType == tokenType )

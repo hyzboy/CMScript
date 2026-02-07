@@ -1,75 +1,51 @@
-﻿#include"DevilParse.h"
+﻿#include "DevilParse.h"
+#include "DevilFunc.h"
 #include <hgl/devil/DevilModule.h>
-#include <memory>
 #include <cstring>
-#include <hgl/type/Str.Number.h>
+#include <ankerl/unordered_dense.h>
 
 namespace hgl::devil
 {
-    void ConvertString(std::string &targe,const char *source,int length)
+    namespace
     {
-        char *temp;
-        const char *sp;
-        char *tp;
-        const char conv[][2]=
+        void ConvertString(std::string &target,const char *source,int length)
         {
-            {'t',   '\t'},
-            {'n',   '\n'},
-            {'r',   '\r'},
-            {'"',   '"'},
-            {'\\',  '\\'},
-            {'\'',  '\''},
-            {0,0}
-        };
+            std::string out;
+            out.reserve(static_cast<size_t>(length));
 
-        temp=new char[length+1];
-        sp=source;
-        tp=temp;
-
-        while(length)
-        {
-            if(*sp=='\\')
+            for(int i=0;i<length;i++)
             {
-                char sc=*(sp+1);
-                int select;
-
-                for(select=0;;select++)
-                    if(conv[select][0]==0)break;
-                    else
-                    if(conv[select][0]==sc)
-                    {
-                        *tp++=conv[select][1];
-
-                        break;
-                    }
-
-                if(!conv[select][0])        //没选中什么
+                if(source[i]=='\\' && i+1<length)
                 {
-                    *tp++='\\';
-                    *tp++=sc;
+                    const char esc=source[i+1];
+                    switch(esc)
+                    {
+                        case 't': out.push_back('\t'); break;
+                        case 'n': out.push_back('\n'); break;
+                        case 'r': out.push_back('\r'); break;
+                        case '\\': out.push_back('\\'); break;
+                        case '\"': out.push_back('"'); break;
+                        case '\'': out.push_back('\''); break;
+                        default:
+                            out.push_back('\\');
+                            out.push_back(esc);
+                            break;
+                    }
+                    i++;
                 }
-
-                length-=2;
-                sp+=2;
+                else
+                {
+                    out.push_back(source[i]);
+                }
             }
-            else
-            {
-                *tp++=*sp++;
 
-                length--;
-            }
+            target=std::move(out);
         }
-
-        *tp=0;
-        targe.assign(temp);
-
-        delete[] temp;
     }
 
     Parse::Parse(Module *dm,const char *str,int len)
     {
         module=dm;
-
         source_start=str;
         source_cur=str;
 
@@ -83,23 +59,23 @@ namespace hgl::devil
     {
         while(true)
         {
-            uint len;
+            uint len=0;
             eTokenType type;
             const char *source;
 
-            if(source_length<=0)return(ttEnd);
+            if(source_length<=0)
+                return ttEnd;
 
             type=parse.GetToken(source_cur,source_length,&len);
 
-            source          =   source_cur;
-
-            source_cur      +=  len;
-            source_length   -=  len;
+            source=source_cur;
+            source_cur+=len;
+            source_length-=len;
 
             if(type<=ttEnd)
                 return ttEnd;
 
-            if(type<=ttMultilineComment)        //跳过注释，空格，换行
+            if(type<=ttMultilineComment)
                 continue;
 
             intro.assign(source,static_cast<size_t>(len));
@@ -111,14 +87,12 @@ namespace hgl::devil
     {
         const char *cur=source_cur;
         uint len=source_length;
-        eTokenType type;
+        eTokenType type=GetToken(intro);
 
-        type=GetToken(intro);
+        source_cur=cur;
+        source_length=len;
 
-        source_cur      =cur;
-        source_length   =len;
-
-        return(type);
+        return type;
     }
 
     bool Parse::GetToken(eTokenType tt,std::string &name)
@@ -130,766 +104,509 @@ namespace hgl::devil
             type=GetToken(name);
 
             if(type==tt)
-                return(true);
+                return true;
 
             if(type<=ttEnd)
-                return(false);
+                return false;
         }
     }
 
-    void Parse::ParseValue(Func *func,eTokenType value_type,std::string &/*type_name*/)
+    bool Parse::IsTypeToken(eTokenType type) const
     {
-        eTokenType type;
-
-        std::string value_name;
-
-        type=GetToken(value_name);
-
-        if(type!=ttIdentifier)  //变量名称
-            return;
-
-        ValueInterface *dvi=func->AddValue(value_type,value_name);
-
-        if(!dvi)
-        {
-            LogError("%s",
-                     ("函数<"+func->func_name+">的变量<"+value_name
-                      +">定义无法解析").c_str());
-            return;
-        }
-
-        type=GetToken(value_name);
-
-        if(type==ttEndStatement)return; //分号
-        if(type!=ttAssignment)return;   //等号
-
-        ValueInterface *dvi_value=ParseValue();    //后面的值或表达式
-
-        if(!dvi_value)
-        {
-            LogError("%s",
-                     ("函数<"+func->func_name+">的变量<"+value_name
-                      +">定义时的赋值式无法解析").c_str());
-            return;
-        }
-
-//      dvi->SetValue(dvi_value);       //赋值
-
-        return;
+        return type==ttBool || type==ttString
+            || type==ttInt || type==ttUInt
+            || type==ttInt8 || type==ttUInt8
+            || type==ttInt16 || type==ttUInt16
+            || type==ttFloat;
     }
 
-/*  void Parse::ParseEnum()
+    int Parse::GetPrecedence(eTokenType type) const
     {
-        eTokenType type;
+        switch(type)
+        {
+            case ttOr: return 1;
+            case ttAnd: return 2;
+            case ttEqual:
+            case ttNotEqual: return 3;
+            case ttLessThan:
+            case ttLessThanOrEqual:
+            case ttGreaterThan:
+            case ttGreaterThanOrEqual: return 4;
+            case ttPlus:
+            case ttMinus: return 5;
+            case ttStar:
+            case ttSlash:
+            case ttPercent: return 6;
+            default: return 0;
+        }
+    }
+
+    std::unique_ptr<Expr> Parse::ParsePrimary()
+    {
         std::string name;
+        eTokenType type=GetToken(name);
 
-        type=GetToken(name);
+        if(type==ttIdentifier)
+            return ParseCallOrIdentifier(name);
 
+        if(type==ttIntConstant)
+            return std::make_unique<LiteralExpr>(AstValue::MakeInt(static_cast<int32_t>(std::stoi(name))));
 
-    }*/
+        if(type==ttFloatConstant || type==ttDoubleConstant)
+            return std::make_unique<LiteralExpr>(AstValue::MakeFloat(static_cast<float>(std::stof(name))));
+
+        if(type==ttTrue)
+            return std::make_unique<LiteralExpr>(AstValue::MakeBool(true));
+
+        if(type==ttFalse)
+            return std::make_unique<LiteralExpr>(AstValue::MakeBool(false));
+
+        if(type==ttStringConstant)
+        {
+            std::string str;
+            ConvertString(str,name.c_str()+1,static_cast<int>(name.size())-2);
+            return std::make_unique<LiteralExpr>(AstValue::MakeString(std::move(str)));
+        }
+
+        if(type==ttOpenParanthesis)
+        {
+            std::unique_ptr<Expr> expr=ParseExpression();
+            GetToken(ttCloseParanthesis,name);
+            return expr;
+        }
+
+        LogError("%s","ParsePrimary failed");
+        return nullptr;
+    }
+
+    std::unique_ptr<Expr> Parse::ParseUnary()
+    {
+        std::string name;
+        eTokenType type=CheckToken(name);
+
+        if(type==ttMinus || type==ttPlus || type==ttNot)
+        {
+            GetToken(name);
+            std::unique_ptr<Expr> right=ParseUnary();
+            return std::make_unique<UnaryExpr>(type,std::move(right));
+        }
+
+        return ParsePrimary();
+    }
+
+    std::unique_ptr<Expr> Parse::ParseExpression(int min_prec)
+    {
+        std::unique_ptr<Expr> left=ParseUnary();
+        if(!left)
+            return nullptr;
+
+        while(true)
+        {
+            std::string name;
+            eTokenType op=CheckToken(name);
+            const int prec=GetPrecedence(op);
+
+            if(prec<min_prec || prec==0)
+                break;
+
+            GetToken(name);
+            std::unique_ptr<Expr> right=ParseExpression(prec+1);
+            if(!right)
+                return nullptr;
+
+            left=std::make_unique<BinaryExpr>(op,std::move(left),std::move(right));
+        }
+
+        return left;
+    }
+
+    std::unique_ptr<Expr> Parse::ParseCallOrIdentifier(const std::string &name)
+    {
+        std::string tmp;
+        eTokenType next=CheckToken(tmp);
+
+        if(next!=ttOpenParanthesis)
+            return std::make_unique<IdentifierExpr>(name);
+
+        GetToken(tmp); // '('
+        std::vector<std::unique_ptr<Expr>> args;
+
+        if(CheckToken(tmp)!=ttCloseParanthesis)
+        {
+            while(true)
+            {
+                std::unique_ptr<Expr> arg=ParseExpression();
+                if(!arg)
+                    return nullptr;
+                args.push_back(std::move(arg));
+
+                eTokenType sep=CheckToken(tmp);
+                if(sep==ttListSeparator)
+                {
+                    GetToken(tmp);
+                    continue;
+                }
+                break;
+            }
+        }
+
+        GetToken(ttCloseParanthesis,tmp);
+        return std::make_unique<CallExpr>(name,std::move(args));
+    }
+
+    std::unique_ptr<Stmt> Parse::ParseVarDecl(eTokenType type)
+    {
+        std::string name;
+        if(GetToken(name)!=ttIdentifier)
+        {
+            LogError("%s","var decl missing identifier");
+            return nullptr;
+        }
+
+        std::unique_ptr<Expr> init;
+        std::string tmp;
+        eTokenType next=CheckToken(tmp);
+        if(next==ttAssignment)
+        {
+            GetToken(tmp);
+            init=ParseExpression();
+        }
+
+        GetToken(ttEndStatement,tmp);
+        return std::make_unique<VarDeclStmt>(type,name,std::move(init));
+    }
+
+    std::unique_ptr<Stmt> Parse::ParseIf()
+    {
+        std::string tmp;
+        GetToken(ttOpenParanthesis,tmp);
+        std::unique_ptr<Expr> cond=ParseExpression();
+        GetToken(ttCloseParanthesis,tmp);
+
+        std::unique_ptr<Stmt> then_stmt=ParseStatement(false);
+        if(!then_stmt)
+            return nullptr;
+
+        std::unique_ptr<BlockStmt> then_block;
+        if(auto *blk=dynamic_cast<BlockStmt *>(then_stmt.get()))
+            then_block=std::unique_ptr<BlockStmt>(static_cast<BlockStmt *>(then_stmt.release()));
+        else
+        {
+            std::vector<std::unique_ptr<Stmt>> stmts;
+            stmts.push_back(std::move(then_stmt));
+            then_block=std::make_unique<BlockStmt>(std::move(stmts));
+        }
+
+        std::unique_ptr<BlockStmt> else_block;
+        eTokenType next=CheckToken(tmp);
+        if(next==ttElse)
+        {
+            GetToken(tmp);
+            std::unique_ptr<Stmt> else_stmt=ParseStatement(false);
+            if(auto *blk=dynamic_cast<BlockStmt *>(else_stmt.get()))
+                else_block=std::unique_ptr<BlockStmt>(static_cast<BlockStmt *>(else_stmt.release()));
+            else
+            {
+                std::vector<std::unique_ptr<Stmt>> stmts;
+                stmts.push_back(std::move(else_stmt));
+                else_block=std::make_unique<BlockStmt>(std::move(stmts));
+            }
+        }
+
+        return std::make_unique<IfStmt>(std::move(cond),std::move(then_block),std::move(else_block));
+    }
+
+    std::unique_ptr<Stmt> Parse::ParseWhile()
+    {
+        std::string tmp;
+        GetToken(ttOpenParanthesis,tmp);
+        std::unique_ptr<Expr> cond=ParseExpression();
+        GetToken(ttCloseParanthesis,tmp);
+
+        std::unique_ptr<Stmt> body_stmt=ParseStatement(false);
+        if(!body_stmt)
+            return nullptr;
+
+        std::unique_ptr<BlockStmt> body;
+        if(auto *blk=dynamic_cast<BlockStmt *>(body_stmt.get()))
+            body=std::unique_ptr<BlockStmt>(static_cast<BlockStmt *>(body_stmt.release()));
+        else
+        {
+            std::vector<std::unique_ptr<Stmt>> stmts;
+            stmts.push_back(std::move(body_stmt));
+            body=std::make_unique<BlockStmt>(std::move(stmts));
+        }
+
+        return std::make_unique<WhileStmt>(std::move(cond),std::move(body));
+    }
+
+    std::unique_ptr<Stmt> Parse::ParseFor()
+    {
+        std::string tmp;
+        GetToken(ttOpenParanthesis,tmp);
+
+        std::unique_ptr<Stmt> init;
+        eTokenType next=CheckToken(tmp);
+        if(next!=ttEndStatement)
+        {
+            if(IsTypeToken(next))
+            {
+                GetToken(tmp);
+                init=ParseVarDecl(next);
+            }
+            else
+            {
+                std::unique_ptr<Expr> expr=ParseExpression();
+                GetToken(ttEndStatement,tmp);
+                init=std::make_unique<ExprStmt>(std::move(expr));
+            }
+        }
+        else
+        {
+            GetToken(tmp);
+        }
+
+        std::unique_ptr<Expr> cond;
+        next=CheckToken(tmp);
+        if(next!=ttEndStatement)
+            cond=ParseExpression();
+        GetToken(ttEndStatement,tmp);
+
+        std::unique_ptr<Expr> post;
+        next=CheckToken(tmp);
+        if(next!=ttCloseParanthesis)
+            post=ParseExpression();
+        GetToken(ttCloseParanthesis,tmp);
+
+        std::unique_ptr<Stmt> body_stmt=ParseStatement(false);
+        if(!body_stmt)
+            return nullptr;
+
+        std::unique_ptr<BlockStmt> body;
+        if(auto *blk=dynamic_cast<BlockStmt *>(body_stmt.get()))
+            body=std::unique_ptr<BlockStmt>(static_cast<BlockStmt *>(body_stmt.release()));
+        else
+        {
+            std::vector<std::unique_ptr<Stmt>> stmts;
+            stmts.push_back(std::move(body_stmt));
+            body=std::make_unique<BlockStmt>(std::move(stmts));
+        }
+
+        return std::make_unique<ForStmt>(std::move(init),std::move(cond),std::move(post),std::move(body));
+    }
+
+    std::unique_ptr<Stmt> Parse::ParseSwitch()
+    {
+        std::string tmp;
+        GetToken(ttOpenParanthesis,tmp);
+        ParseExpression();
+        GetToken(ttCloseParanthesis,tmp);
+        GetToken(ttStartStatementBlock,tmp);
+        int depth=1;
+        while(depth>0)
+        {
+            eTokenType t=GetToken(tmp);
+            if(t==ttStartStatementBlock)
+                depth++;
+            else
+            if(t==ttEndStatementBlock)
+                depth--;
+            else
+            if(t==ttEnd)
+                break;
+        }
+        return std::make_unique<SwitchStmt>();
+    }
+
+    std::unique_ptr<Stmt> Parse::ParseEnum()
+    {
+        std::string tmp;
+        GetToken(tmp); // enum name
+        GetToken(ttStartStatementBlock,tmp);
+        int depth=1;
+        while(depth>0)
+        {
+            eTokenType t=GetToken(tmp);
+            if(t==ttStartStatementBlock)
+                depth++;
+            else
+            if(t==ttEndStatementBlock)
+                depth--;
+            else
+            if(t==ttEnd)
+                break;
+        }
+        if(CheckToken(tmp)==ttEndStatement)
+            GetToken(tmp);
+        return std::make_unique<EnumDeclStmt>();
+    }
+
+    std::unique_ptr<Stmt> Parse::ParseStatement(bool top_level)
+    {
+        std::string name;
+        eTokenType type=CheckToken(name);
+
+        if(type==ttStartStatementBlock)
+            return ParseBlock(top_level);
+
+        if(type==ttIf)
+        {
+            GetToken(name);
+            return ParseIf();
+        }
+
+        if(type==ttWhile)
+        {
+            GetToken(name);
+            return ParseWhile();
+        }
+
+        if(type==ttFor)
+        {
+            GetToken(name);
+            return ParseFor();
+        }
+
+        if(type==ttSwitch)
+        {
+            GetToken(name);
+            return ParseSwitch();
+        }
+
+        if(type==ttEnum)
+        {
+            GetToken(name);
+            return ParseEnum();
+        }
+
+        if(type==ttReturn)
+        {
+            GetToken(name);
+            if(CheckToken(name)==ttEndStatement)
+            {
+                GetToken(name);
+                return std::make_unique<ReturnStmt>(nullptr);
+            }
+
+            std::unique_ptr<Expr> expr=ParseExpression();
+            GetToken(ttEndStatement,name);
+            return std::make_unique<ReturnStmt>(std::move(expr));
+        }
+
+        if(type==ttGoto)
+        {
+            GetToken(name);
+            GetToken(name);
+            GetToken(ttEndStatement,name);
+            return std::make_unique<GotoStmt>(name);
+        }
+
+        if(IsTypeToken(type))
+        {
+            GetToken(name);
+            return ParseVarDecl(type);
+        }
+
+        if(type==ttIdentifier)
+        {
+            GetToken(name);
+            std::string next;
+            eTokenType next_type=CheckToken(next);
+
+            if(next_type==ttColon)
+            {
+                GetToken(next);
+                if(!top_level)
+                {
+                    LogError("%s","label must be at top-level");
+                    return nullptr;
+                }
+                return std::make_unique<LabelStmt>(name);
+            }
+
+            if(next_type==ttAssignment)
+            {
+                GetToken(next);
+                std::unique_ptr<Expr> expr=ParseExpression();
+                GetToken(ttEndStatement,next);
+                return std::make_unique<AssignStmt>(name,std::move(expr));
+            }
+
+            if(next_type==ttOpenParanthesis)
+            {
+                std::unique_ptr<Expr> expr=ParseCallOrIdentifier(name);
+                GetToken(ttEndStatement,next);
+                return std::make_unique<ExprStmt>(std::move(expr));
+            }
+        }
+
+        LogError("%s","ParseStatement failed");
+        return nullptr;
+    }
+
+    std::unique_ptr<BlockStmt> Parse::ParseBlock(bool top_level)
+    {
+        std::string tmp;
+        if(CheckToken(tmp)==ttStartStatementBlock)
+            GetToken(tmp);
+
+        std::vector<std::unique_ptr<Stmt>> stmts;
+
+        while(true)
+        {
+            eTokenType t=CheckToken(tmp);
+            if(t==ttEndStatementBlock)
+            {
+                GetToken(tmp);
+                break;
+            }
+            if(t==ttEnd)
+                break;
+
+            std::unique_ptr<Stmt> stmt=ParseStatement(top_level);
+            if(!stmt)
+                return nullptr;
+            stmts.push_back(std::move(stmt));
+        }
+
+        return std::make_unique<BlockStmt>(std::move(stmts));
+    }
 
     bool Parse::ParseFunc(Func *func)
     {
         std::string name;
 
-//      GetToken(ttOpenParanthesis,name);       // (
-                                                // 脚本函数暂时不支持参数
-        GetToken(ttCloseParanthesis,name);      // )
-
-        if(!ParseCode(func))
-            return(false);
-
-        for(int i=0;i<static_cast<int>(func->command.size());i++)
+        GetToken(ttOpenParanthesis,name);
+        if(CheckToken(name)!=ttCloseParanthesis)
         {
-            Command *cmd=func->command[i].get();
-            if(!cmd)
+            LogError("%s","function parameters are not supported yet");
+            return false;
+        }
+        GetToken(ttCloseParanthesis,name);
+
+        std::unique_ptr<BlockStmt> body=ParseBlock(true);
+        if(!body)
+            return false;
+
+        ankerl::unordered_dense::map<std::string,size_t> labels;
+        const auto &stmts=body->GetStatements();
+        for(size_t i=0;i<stmts.size();++i)
+        {
+            const auto *label_stmt=dynamic_cast<const LabelStmt *>(stmts[i].get());
+            if(!label_stmt)
                 continue;
 
-            if(auto *goto_cmd=dynamic_cast<Goto *>(cmd))
-                goto_cmd->UpdateGotoFlag();
-            else
-            if(auto *comp_goto_cmd=dynamic_cast<CompGoto *>(cmd))
-                comp_goto_cmd->UpdateGotoFlag();
+            const std::string &label=label_stmt->GetLabel();
+            if(labels.find(label)!=labels.end())
+            {
+                LogError("%s",("duplicate label: "+label).c_str());
+                return false;
+            }
+            labels.emplace(label,i);
         }
 
-        return(true);
+        func->SetBody(std::move(body),std::move(labels));
+        return true;
     }
+}
 
-    bool Parse::ParseCode(Func *func)
-    {
-        std::string name;
-        eTokenType type;
-        bool ca;
-        int StatmentCount;                  //花括号数量
-
-        type=CheckToken(name);
-
-        if(type==ttStartStatementBlock)     //如果是左花括号
-        {
-            ca=false;                       //结束时不用检测分号
-
-            StatmentCount=1;
-
-            GetToken(name);                 //取走左花括号
-        }
-        else
-        {
-            ca=true;
-
-            StatmentCount=0;
-        }
-
-        do
-        {
-            type=GetToken(name);
-
-            if(type==ttStartStatementBlock)     // {
-            {
-                StatmentCount++;
-
-                continue;
-            }
-
-            if(type==ttEndStatementBlock)       // }
-            {
-                StatmentCount--;
-                continue;
-            }
-
-            if(type<=ttEnd)
-                return(false);
-
-            /*if(type==ttEnum)                  //解析枚举
-            {
-                ParseEnum();
-
-                continue;
-            }*/
-
-            if(type==ttGoto)                    //goto
-            {
-                GetToken(name);                 //取得跳转标识符
-
-                func->AddGotoCommand(name);
-
-                continue;
-            }
-
-            if(type==ttIf)
-            {
-                if(ParseIf(func))
-                    continue;
-                else
-                {
-                    LogError("%s","if解析错误");
-                    return(false);
-                }
-            }
-
-            if(type==ttReturn)
-            {
-                func->AddReturn();          //return
-
-                continue;
-            }
-
-            if(type==ttBool         ||type==ttString
-             ||type==ttInt          ||type==ttUInt
-             ||type==ttInt8         ||type==ttUInt8
-             ||type==ttInt16        ||type==ttUInt16
-             ||type==ttInt64        ||type==ttUInt64
-             ||type==ttFloat        ||type==ttDouble)
-            {
-                ParseValue(func,type,name);         //解释变量定义
-
-                continue;
-            }
-
-            if(type==ttIdentifier)              //未知标识
-            {
-                std::string temp;
-
-                type=GetToken(temp);
-
-                if(type==ttColon)               //冒号,Goto用标识
-                {
-                    if(func->AddGotoFlag(name))
-                        continue;
-                    else
-                    {
-                        LogError("%s","冒号后面的字段无法解析!");
-                        return(false);
-                    }
-                }
-                else
-                if(type==ttOpenParanthesis)     //函数
-                {
-                    //真实函数调用验证
-                    {
-                        FuncMap *map_func=module->GetFuncMap(name);
-
-                        if(map_func)
-                        {
-                            #ifdef _DEBUG
-                            std::string intro;
-
-                            Command *cmd=ParseFuncCall(name,map_func,intro);
-                            #else
-                            Command *cmd=ParseFuncCall(map_func);
-                            #endif//
-
-                            if(cmd)
-                            {
-                                #ifdef _DEBUG
-                                int index=
-                                #endif//_DEBUG
-
-                                func->AddCommand(cmd);
-
-                                if(!module->OnTrueFuncCall)
-                                {
-                                    // No callback registered.
-                                }
-                                else
-                                {
-                                    const bool call=module->OnTrueFuncCall(name.c_str());
-
-                                    if(call)
-                                        cmd->Run(nullptr);      //这里是解析器，为什么要执行一下 ？？
-                                }
-
-                                #ifdef _DEBUG
-                                LogInfo("%s",
-                                    (std::to_string(index)+"\t"+intro).c_str());
-                                #endif//_DEBUG
-
-                                continue;
-                            }//if cmd
-                        }// if map_func
-                    }
-
-                    //脚本函数调用验证
-                    {
-                        Func *script_func=module->GetScriptFunc(name);
-
-                        if(script_func)
-                        {
-                            func->AddScriptFuncCall(script_func);
-
-                            continue;
-                        }
-                    }
-
-                    LogWarning("%s",
-                               ("脚本调用函数没有找到相应的真实函数映射与脚本函数: "+name).c_str());
-//                  return(false);      //错误也不退出，是为了把所有不支持的函数全列出来
-                }
-            }
-
-//          ErrorHint(u"无法理解的标识符:%s",name.c_str());
-//          return(false);
-        }
-        while(StatmentCount);               //如果匹配的花括号用完了，即代表函数结束了
-
-        if(ca)                              //没有用花括号匹配，所以要取走分号
-            GetToken(ttEndStatement,name);
-
-        return(true);
-    }
-
-    template<typename T> bool ParseToNumber(T &result,const std::string &str);
-
-    template<> bool ParseToNumber<int>  (int &  result,const std::string &str){return hgl::stoi(str.c_str(), result);}
-    template<> bool ParseToNumber<uint> (uint & result,const std::string &str){return hgl::stou(str.c_str(), result);}
-    template<> bool ParseToNumber<float>(float &result,const std::string &str){return hgl::stof(str.c_str(), result);}
-
-    template<typename T>
-    bool Parse::ParseNumber(T &result,const std::string &str)           //由于从程式理论上讲，调用这个函数时，都是因为测出str是数值的时候，所以不可能产生解析错误的情况。
-    {
-        if(ParseToNumber<T>(result,str))
-            return(true);
-
-           LogError("%s",
-               ("解析数值\""+str+"\"失败!").c_str());
-        return(false);
-    }
-
-    #ifdef _DEBUG
-    Command *Parse::ParseFuncCall(std::string &func_name,FuncMap *map,std::string &intro)
-    #else
-    Command *Parse::ParseFuncCall(FuncMap *map)
-    #endif//
-    {
-        std::string name;
-        eTokenType type;
-
-        //按个数解晰参数
-        int i=0,param_count=static_cast<int>(map->param.size());
-        SystemFuncParam *param,*p;
-
-        #if HGL_CPU == HGL_CPU_X86_64
-        if(map->base)
-        {
-            param=new SystemFuncParam[param_count+1];
-
-            param[0].void_pointer=map->base;            //x64下第一个参数放置this
-
-            p=param+1;
-        }
-        else
-        {
-            param=new SystemFuncParam[param_count];
-
-            p=param;
-        }
-        #endif//HGL_CPU == HGL_CPU_X86_64
-
-        #ifdef _DEBUG
-        //intro.Sprintf(u"%s(",func_name.c_str());
-        intro=func_name+"(";
-        #endif//
-
-
-        while(true)
-        {
-            if(i>=param_count)break;
-
-            type=GetToken(name);
-
-            if(type==ttListSeparator)continue;
-
-            switch(map->param[i++])
-            {
-                case ttBool:    if(type==ttTrue)            *(bool *)p=true;                    else
-                                if(type==ttFalse)           *(bool *)p=false;                   else
-                                if(type==ttIntConstant)
-                                {
-                                    if(!ParseNumber(*(int *)p,name))
-                                        break;
-                                }
-                                else
-                                    break;
-
-                                #ifdef _DEBUG
-                                intro+=( *(bool *)(p) ? "true" : "false" );
-                                if(i<param_count)intro.push_back(',');
-                                #endif//
-
-                                p++;
-                                continue;
-                case ttInt:
-                case ttInt8:
-                case ttInt16:
-//              case ttInt64:
-                                if(type==ttIntConstant
-                                 ||type==ttFloatConstant
-                                 ||type==ttDoubleConstant)
-                                {
-                                    if(!ParseNumber(*(int *)p,name))
-                                        break;
-                                }
-                                else
-                                    break;
-
-                                #ifdef _DEBUG
-                                //intro.CatSprintf(u"%d",*(int *)(p));
-                                intro+=std::to_string(*(int *)p);
-                                if(i<param_count)intro.push_back(',');
-                                #endif//
-
-                                p++;
-                                continue;
-                case ttUInt:
-                case ttUInt8:
-                case ttUInt16:
-//              case ttUInt64:
-                                if(type==ttIntConstant
-                                 ||type==ttFloatConstant
-                                 ||type==ttDoubleConstant)
-                                {
-                                    if(!ParseNumber(*(uint *)p,name))
-                                        break;
-                                }
-                                else
-                                    break;
-
-                                #ifdef _DEBUG
-                                //intro.CatSprintf(u"%u",*(uint *)(p));
-                                intro+=std::to_string(*(uint *)p);
-                                if(i<param_count)intro.push_back(',');
-                                #endif//
-
-                                p++;
-                                continue;
-                case ttFloat:
-//              case ttDouble:
-                                if(type==ttIntConstant
-                                 ||type==ttFloatConstant
-                                 ||type==ttDoubleConstant)
-                                {
-                                    if(!ParseNumber(*(float *)p,name))
-                                        break;
-                                }
-                                else
-                                    break;
-
-                                #ifdef _DEBUG
-                                //intro.CatSprintf(u"%f",*(float *)(p));
-                                intro+=std::to_string(*(float *)p);
-                                if(i<param_count)intro.push_back(',');
-                                #endif//
-
-                                p++;
-                                continue;
-
-                case ttString:  if(type==ttStringConstant)
-                                {
-                                    std::string str;
-                                    ConvertString(str,name.c_str()+1,static_cast<int>(name.size())-2);      //去掉两边的引号，并转换\t\n之类的数据
-                                    module->string_list.push_back(str);
-
-                                    *(char **)(p)=(char *)(module->string_list.back().c_str());
-
-                                    #ifdef _DEBUG
-                                    intro+=name;
-                                    if(i<param_count)intro.push_back(',');
-                                    #endif//
-
-                                    p++;
-                                    continue;
-                                }
-                                break;
-            }
-
-            delete[] param;
-
-            #ifdef _DEBUG
-            LogNotice("%s",
-                      ("脚本中的参数和映射函数的格式要求不兼容！\n\t"+intro).c_str());
-            #endif//
-
-            GetToken(ttCloseParanthesis,name);      //右括号
-            return(nullptr);
-        }
-
-        GetToken(ttCloseParanthesis,name);      //右括号
-
-//      if(CheckToken(name)==ttEndStatement)    //测试下一个是否分号
-//          GetToken(name);                     //取走分号
-
-        #if HGL_CPU == HGL_CPU_X86_64
-        if(map->base)param_count++;                 //如果是x64位下的C++函数，第一个参数放this指针
-        #endif//HGL_CPU == HGL_CPU_X86_64
-
-        if(map->result==ttVoid  )return(new SystemFuncCallFixed<void *     >(map,param,param_count));else
-
-        if(map->result==ttBool  )return(new SystemFuncCallFixed<bool       >(map,param,param_count));else
-        if(map->result==ttInt8  )return(new SystemFuncCallFixed<int8       >(map,param,param_count));else
-        if(map->result==ttInt16 )return(new SystemFuncCallFixed<int16      >(map,param,param_count));else
-        if(map->result==ttInt   )return(new SystemFuncCallFixed<int32      >(map,param,param_count));else
-        if(map->result==ttUInt8 )return(new SystemFuncCallFixed<uint8      >(map,param,param_count));else
-        if(map->result==ttUInt16)return(new SystemFuncCallFixed<uint16     >(map,param,param_count));else
-        if(map->result==ttUInt  )return(new SystemFuncCallFixed<uint32     >(map,param,param_count));else
-        if(map->result==ttFloat )return(new SystemFuncCallFixed<float      >(map,param,param_count));else
-        if(map->result==ttString)return(new SystemFuncCallFixed<char *    >(map,param,param_count));else
-        {
-            delete[] param;
-            return(nullptr);
-        }
-    }
-
-    bool Parse::ParseIf(Func *func)
-    {
-        std::string name;
-        std::string flag;
-        CompInterface *dci;
-        CompGoto *dcg;
-
-        flag=func->func_name+"_"+std::to_string(static_cast<int>(func->command.size()));
-
-        dci=ParseComp();                                                                            //解析比较表达式
-
-        if(!dci)
-            return(false);
-
-        {
-            auto cmd=std::make_unique<CompGoto>(module,dci,func);
-            dcg=cmd.get();
-            func->command.emplace_back(std::move(cmd));                                        //增加比较跳转控制
-        }
-
-        LogInfo("%s",("if "+flag).c_str());
-
-        ParseCode(func);                                                                            //解析 then 段
-
-        if(CheckToken(name)==ttElse)
-        {
-            func->AddGotoCommand(flag+"_end");                                                      //在else前增加goto到if/else结束处
-
-            GetToken(ttElse,name);
-
-            dcg->else_flag=flag+"_else";                                                            //设置比较else的话跳到else段
-
-            func->AddGotoFlag(flag+"_else");                                                        //增加else段跳转旗标
-
-            ParseCode(func);                                                                        //解析 else 段
-        }
-        else
-            dcg->else_flag=flag+"_end";                                                             //设置比较else的话直接跳到最后
-
-        func->AddGotoFlag(flag+"_end");                                                             //增加结束跳转用旗标
-
-        return(true);
-    }
-
-    CompInterface *Parse::ParseComp()
-    {
-        std::string name;
-        int comp;
-        ValueInterface *left,*right;
-
-        GetToken(ttOpenParanthesis,name);       // (
-
-        //解析比较式左边
-        left=ParseValue();
-
-        if(!left)return(nullptr);
-
-        //解析比较符号
-        comp=ParseCompType();
-        if(comp==ttUnrecognizedToken)       //未知
-        {
-            delete left;
-            return(nullptr);
-        }
-        else
-        if(comp==ttCloseParanthesis)        //右括号
-        {
-            //暂时不支持
-            delete left;
-            return(nullptr);
-        }
-
-        //解析比较式右边
-        right=ParseValue();
-
-        if(!right)
-        {
-            delete left;
-            return(nullptr);
-        }
-
-        GetToken(ttCloseParanthesis,name);      // )
-
-        //创建比较指令
-        {
-            CompInterface *dci=nullptr;
-
-            #define DEVIL_COMP_FLAG(flag,func,_lt,_rt)  case flag:dci=new func<_lt,_rt>(left,right);break;
-
-            #define DEVIL_COMP_CREATE(lt,_lt,rt,_rt)    if((left->type==lt)&&(right->type==rt)) \
-                                                            switch(comp)    \
-                                                            {   \
-                                                                DEVIL_COMP_FLAG(ttEqual             ,CompEqu       ,_lt,_rt)   \
-                                                                DEVIL_COMP_FLAG(ttNotEqual          ,CompNotEqu    ,_lt,_rt)   \
-                                                                DEVIL_COMP_FLAG(ttLessThan          ,CompLess      ,_lt,_rt)   \
-                                                                DEVIL_COMP_FLAG(ttGreaterThan       ,CompGreater   ,_lt,_rt)   \
-                                                                DEVIL_COMP_FLAG(ttLessThanOrEqual   ,CompLessEqu   ,_lt,_rt)   \
-                                                                DEVIL_COMP_FLAG(ttGreaterThanOrEqual,CompGreaterEqu,_lt,_rt)   \
-                                                            };
-
-            #define DEVIL_COMP_ARRAY(lt,_lt)    DEVIL_COMP_CREATE(lt,_lt,ttBool,    bool);  \
-                                                DEVIL_COMP_CREATE(lt,_lt,ttInt,     int);   \
-                                                DEVIL_COMP_CREATE(lt,_lt,ttUInt,    uint);  \
-                                                DEVIL_COMP_CREATE(lt,_lt,ttFloat,   float); \
-                                                DEVIL_COMP_CREATE(lt,_lt,ttDouble,  double);\
-                                                DEVIL_COMP_CREATE(lt,_lt,ttInt64,   int64); \
-                                                DEVIL_COMP_CREATE(lt,_lt,ttUInt64,  uint64);\
-
-            DEVIL_COMP_ARRAY(ttBool,    bool    )
-            DEVIL_COMP_ARRAY(ttInt,     int     )
-            DEVIL_COMP_ARRAY(ttUInt,    uint    )
-            DEVIL_COMP_ARRAY(ttFloat,   float   )
-            DEVIL_COMP_ARRAY(ttDouble,  float   )
-            DEVIL_COMP_ARRAY(ttInt64,   int64   )
-            DEVIL_COMP_ARRAY(ttUInt64,  uint64  )
-
-            #undef DEVIL_COMP_ARRAY
-            #undef DEVIL_COMP_FLAG
-            #undef DEVIL_COMP_CREATE
-
-            return(dci);
-        }
-    }
-
-    ValueInterface *Parse::ParseValue()
-    {
-        int type;
-        std::string name,temp;
-
-        ValueInterface *dcii=nullptr;
-
-        type=GetToken(name);
-        if(type==ttIdentifier)      //未知标识符
-        {
-            type=CheckToken(temp);
-
-            if(type==ttOpenParanthesis)     //函数调用
-            {
-                //真实函数调用验证
-                {
-                        FuncMap *map_func=module->GetFuncMap(name);
-
-                    if(map_func)
-                    {
-                        GetToken(ttOpenParanthesis,name);   //取出 (
-
-                        #ifdef _DEBUG
-                        std::string intro;
-
-                            Command *cmd=ParseFuncCall(name,map_func,intro);
-                        #else
-                            Command *cmd=ParseFuncCall(map_func);
-                        #endif//
-
-                        if(cmd)
-                        {
-                            switch(map_func->result)
-                            {
-                                case ttBool:    dcii=new ValueFuncMap<bool     >(module,cmd,ttBool     );break;
-
-                                case ttInt8:    dcii=new ValueFuncMap<int8     >(module,cmd,ttInt8     );break;
-                                case ttInt16:   dcii=new ValueFuncMap<int16    >(module,cmd,ttInt16    );break;
-                                case ttInt:     dcii=new ValueFuncMap<int32    >(module,cmd,ttInt      );break;
-
-                                case ttUInt8:   dcii=new ValueFuncMap<uint8    >(module,cmd,ttUInt8    );break;
-                                case ttUInt16:  dcii=new ValueFuncMap<uint16   >(module,cmd,ttUInt16   );break;
-                                case ttUInt:    dcii=new ValueFuncMap<uint32   >(module,cmd,ttUInt     );break;
-
-                                case ttFloat:   dcii=new ValueFuncMap<float    >(module,cmd,ttFloat    );break;
-
-                                case ttString:  dcii=new ValueFuncMap<char *>(module,cmd,ttString   );break;
-
-                                default:        LogError("%s","if中调用的函数返回类型无法支持");break;
-                            }
-                        }
-                        else
-                            LogError("%s","if中的真实函数映射没有找到");
-                    }
-                }
-
-                //脚本函数调用验证
-/*              {
-                    Func *script_func=module->GetScriptFunc(name);
-
-                    if(script_func)
-                    {
-                        func->command.emplace_back(std::make_unique<ScriptFuncCall>(module,script_func));
-                        return(true);
-                    }
-                }
-
-                ErrorHint(u"脚本调用函数没有找到相应的真实函数映射与脚本函数<%s>",name.c_str());*/
-            }
-            else    //属性映射
-            {
-                PropertyMap *dpm=module->GetPropertyMap(name);
-
-                if(dpm)
-                {
-                    switch(dpm->type)
-                    {
-                        case ttBool:    dcii=new ValueProperty<bool    >(module,dpm,ttBool);break;
-
-                        case ttInt8:    dcii=new ValueProperty<int8    >(module,dpm,ttInt8);break;
-                        case ttInt16:   dcii=new ValueProperty<int16   >(module,dpm,ttInt16);break;
-                        case ttInt:     dcii=new ValueProperty<int32   >(module,dpm,ttInt);break;
-                        //case ttInt64: dcii=new ValueProperty<int64   >(module,dpm,ttInt64);break;
-
-                        case ttUInt8:   dcii=new ValueProperty<uint8   >(module,dpm,ttUInt8);break;
-                        case ttUInt16:  dcii=new ValueProperty<uint16  >(module,dpm,ttUInt16);break;
-                        case ttUInt:    dcii=new ValueProperty<uint32  >(module,dpm,ttUInt);break;
-                        //case ttUInt64:    dcii=new ValueProperty<uint64  >(module,dpm,ttUInt64);break;
-
-                        case ttFloat:   dcii=new ValueProperty<float   >(module,dpm,ttFloat);break;
-                        //case ttDouble:    dcii=new ValueProperty<double  >(module,dpm,ttDouble);break;
-
-                        default:LogError("%s",
-                                         ("if 比较指令暂时不支持<"+std::string(GetTokenName(dpm->type))
-                                          +">类型的数据进行比较").c_str());
-                                return(nullptr);
-                    }
-                }
-                else
-                {
-                    LogError("%s",
-                             ("没有找到属性映射:"+name).c_str());
-                    return(nullptr);
-                }
-            }
-        }
-        else
-        if(type==ttTrue||type==ttFalse) //布尔型
-        {
-            dcii=new ValueBool(module,name.c_str());
-        }
-        else
-        if(type==ttIntConstant)         //整数
-        {
-            dcii=new ValueUInteger(module,name.c_str());
-        }
-        else
-        if(type==ttFloatConstant)       //浮点数
-        {
-            dcii=new ValueFloat(module,name.c_str());
-        }
-        else
-        if(type==ttDoubleConstant)      //浮点数
-        {
-            dcii=new ValueDouble(module,name.c_str());
-        }
-        else
-        if(type==ttMinus)               // -号
-        {
-            type=GetToken(name);
-
-            std::string str;
-            str.push_back('-');
-            str+=name;
-
-            if(type==ttIntConstant)         //整数
-            {
-                dcii=new ValueInteger(module,str.c_str());
-            }
-            else
-            if(type==ttFloatConstant)       //浮点数
-            {
-                dcii=new ValueFloat(module,str.c_str());
-            }
-            else
-            if(type==ttDoubleConstant)      //浮点数
-            {
-                dcii=new ValueDouble(module,str.c_str());
-            }
-        }
-
-        return(dcii);
-    }
-
-    eTokenType Parse::ParseCompType()
-    {
-        eTokenType type;
-        std::string name;
-
-        type=GetToken(name);
-
-        if(type>=ttEqual
-         &&type<=ttGreaterThanOrEqual)
-            return(type);
-        else
-        if(type==ttCloseParanthesis)
-            return(ttCloseParanthesis);
-        else
-            return(ttUnrecognizedToken);
-    }
-}//namespace hgl::devil

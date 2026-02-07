@@ -1,10 +1,10 @@
-﻿#pragma once
+#pragma once
 
-#include"as_tokenizer.h"
-#include"DevilFunc.h"
+#include "as_tokenizer.h"
+#include "DevilAst.h"
 #include <string>
-#include<hgl/platform/compiler/EventFunc.h>
-#include<hgl/log/Log.h>
+#include <hgl/platform/compiler/EventFunc.h>
+#include <hgl/log/Log.h>
 
 namespace hgl::devil
 {
@@ -14,38 +14,32 @@ namespace hgl::devil
     {
         OBJECT_LOGGER
 
-        Module * module;
+        Module *module;
 
-        const char *        source_start;
+        const char *source_start;
+        const char *source_cur;
+        uint source_length;
 
-        const char *        source_cur;
-        uint                source_length;
-
-        asCTokenizer        parse;
+        asCTokenizer parse;
 
     private:
+        std::unique_ptr<BlockStmt> ParseBlock(bool top_level);
+        std::unique_ptr<Stmt> ParseStatement(bool top_level);
+        std::unique_ptr<Stmt> ParseVarDecl(eTokenType type);
+        std::unique_ptr<Expr> ParseExpression(int min_prec=0);
+        std::unique_ptr<Expr> ParseUnary();
+        std::unique_ptr<Expr> ParsePrimary();
+        std::unique_ptr<Expr> ParseCallOrIdentifier(const std::string &name);
+        std::unique_ptr<Stmt> ParseIf();
+        std::unique_ptr<Stmt> ParseWhile();
+        std::unique_ptr<Stmt> ParseFor();
+        std::unique_ptr<Stmt> ParseSwitch();
+        std::unique_ptr<Stmt> ParseEnum();
 
-        bool                    ParseCode(Func *);                                             //解析一段代码
-
-        template<typename T>
-        bool                    ParseNumber(T &,const std::string &);
-
-        ValueInterface *        ParseValue();                                                       //解析一个量(属性/数值/真实函数调用)
-        void                    ParseValue(Func *,eTokenType,std::string &);
-        void                    ParseEnum();
-
-        #ifdef _DEBUG
-        Command *               ParseFuncCall(std::string &,FuncMap *,std::string &);
-        #else
-        Command *               ParseFuncCall(FuncMap *);
-        #endif//
-        bool                    ParseIf(Func *);
-
-        CompInterface *         ParseComp();
-        eTokenType              ParseCompType();
+        bool IsTypeToken(eTokenType) const;
+        int GetPrecedence(eTokenType) const;
 
     public:
-
         Parse(Module *,const char *,int=-1);
 
         eTokenType GetToken(std::string &);     //取得一个token,自动跳过注释、换行、空格

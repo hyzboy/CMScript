@@ -1,9 +1,8 @@
 #pragma once
 
-#include "DevilCommand.h"
+#include "DevilAst.h"
 #include <string>
 #include <hgl/log/Log.h>
-#include <absl/container/inlined_vector.h>
 #include <memory>
 #include <ankerl/unordered_dense.h>
 
@@ -24,30 +23,20 @@ namespace hgl::devil
 
         std::string func_name;
 
-        absl::InlinedVector<std::unique_ptr<Command>, 8> command;
-
-        ankerl::unordered_dense::map<std::string,int> goto_flag;
-
-        ankerl::unordered_dense::map<std::string,ValueInterface *> script_value_list;
+        std::unique_ptr<BlockStmt> body;
+        ankerl::unordered_dense::map<std::string,size_t> label_index;
 
     public:
 
         Func(Module *dvm,const std::string &name){module=dvm;func_name=name;}
 
-        bool AddGotoFlag(const std::string &);      //增加跳转旗标
-        int FindGotoFlag(const std::string &);      //查找跳转旗标
-
-        void AddGotoCommand(const std::string &);   //增加跳转指令
-        void AddReturn();                           //增加返回指令
-
-        int AddCommand(Command *cmd)           //直接增加指令
+        void SetBody(std::unique_ptr<BlockStmt> new_body,ankerl::unordered_dense::map<std::string,size_t> labels)
         {
-            command.emplace_back(cmd);
-            return static_cast<int>(command.size()-1);
+            body=std::move(new_body);
+            label_index=std::move(labels);
         }
 
-        void AddScriptFuncCall(Func *);        //增加脚本函数呼叫
-
-        ValueInterface *AddValue(eTokenType,const std::string &);          //增加一个变量
+        const BlockStmt *GetBody() const{return body.get();}
+        const ankerl::unordered_dense::map<std::string,size_t> &GetLabels() const{return label_index;}
     };//class Func
 }//namespace hgl::devil

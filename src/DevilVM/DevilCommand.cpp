@@ -54,6 +54,8 @@ namespace devil
 //  }
 //}//namespace hgl
 
+#if 0
+// Legacy command-based VM implementations removed in AST mode.
 namespace hgl
 {
 namespace devil
@@ -94,7 +96,7 @@ namespace devil
             const auto it=func->goto_flag.find(name);
             if(it!=func->goto_flag.end())
                 index=it->second;
-        }                                       // 由于跳转标识有可能在这个GOTO之后定义，所以必须等这个函数解晰完了，再调用SetLine
+        }
 
         if(index==-1)
             LogError("%s",
@@ -150,7 +152,7 @@ namespace devil
     {
         if(comp->Comp())return(true);
 
-        if(index==-1)           //不含else的if脚本，else_flag自动为end_flag
+        if(index==-1)
             return(false);
 
         return context->Goto(func,index);
@@ -173,4 +175,5 @@ namespace devil
     }
 }//namespace devil
 }//namespace hgl
+#endif
 

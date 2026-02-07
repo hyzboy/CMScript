@@ -1,6 +1,7 @@
 #include <hgl/devil/DevilModule.h>
-#include"DevilParse.h"
-#include"DevilFunc.h"
+#include "DevilCommand.h"
+#include "DevilParse.h"
+#include "DevilFunc.h"
 #include <cstring>
 
 namespace hgl
