@@ -1,4 +1,3 @@
-option(CMSCRIPT_ENABLE_ANGEL "Build AngelScript backend" OFF)
 option(CMSCRIPT_ENABLE_DEVIL "Build DevilScript backend" ON)
 
 set(CMSCRIPT_SOURCES
@@ -8,12 +7,6 @@ set(CMSCRIPT_SOURCES
 set(CMSCRIPT_INCLUDE_DIRS
 	${CMSCRIPT_ROOT_INCLUDE_PATH}
 )
-
-if(CMSCRIPT_ENABLE_ANGEL)
-	add_subdirectory(AngelVM)
-	list(APPEND CMSCRIPT_SOURCES ${ANGEL_SCRIPT_SOURCES})
-	list(APPEND CMSCRIPT_INCLUDE_DIRS ${ANGEL_SCRIPT_INCLUDE_DIRS})
-endif()
 
 if(CMSCRIPT_ENABLE_DEVIL)
 	add_subdirectory(DevilVM)
@@ -25,11 +18,6 @@ add_cm_library(CMScript "CM" ${CMSCRIPT_ROOT_INCLUDE_PATH} ${CMSCRIPT_SOURCES})
 
 if(TARGET ${DEVIL_VM_CALLX64_TARGET})
 	add_dependencies(CMScript ${DEVIL_VM_CALLX64_TARGET})
-endif()
-
-if(CMSCRIPT_ENABLE_ANGEL)
-	target_include_directories(CMScript PRIVATE ${ANGEL_SCRIPT_INCLUDE_DIRS})
-	target_compile_definitions(CMScript PRIVATE ${ANGEL_SCRIPT_DEFINITIONS})
 endif()
 
 if(CMSCRIPT_ENABLE_DEVIL)
