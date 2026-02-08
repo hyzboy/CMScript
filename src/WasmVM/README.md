@@ -125,8 +125,37 @@ Unified type system supporting:
 See `examples/` directory:
 - `hello_wamr.cpp` - WAMR example
 - `hello_wasmedge.cpp` - WasmEdge example
+- `wasm/` - C/C++ source examples for compiling to WebAssembly
 
 Both examples use the same WASM module demonstrating the unified interface.
+
+## Compiling C/C++ to WebAssembly
+
+To compile your own C/C++ code to WebAssembly modules:
+
+### Quick Start
+
+```bash
+# 1. Download WASI-SDK
+scripts/download_wasi_sdk.sh  # or .bat on Windows
+
+# 2. Compile C/C++ to .wasm
+scripts/compile_to_wasm.sh examples/wasm/add.c build/add.wasm
+
+# 3. (Optional) Compile to AOT for better performance
+scripts/compile_to_aot.sh build/add.wasm build/add.aot
+```
+
+### Detailed Guide
+
+For comprehensive instructions on:
+- Installing WASI-SDK
+- Compiling C/C++ to .wasm format
+- Compiling .wasm to .aot format
+- Optimization options
+- Troubleshooting
+
+See the [WASI-SDK Usage Guide](../../docs/WASI_SDK_GUIDE.md).
 
 ## License
 

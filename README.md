@@ -105,6 +105,27 @@ See `examples/` directory for more examples.
 ## Documentation
 
 - [WASM VM Documentation](src/WasmVM/README.md)
+- [WASI-SDK Usage Guide](docs/WASI_SDK_GUIDE.md) - How to compile C/C++ to .wasm and .aot
+- [WASM Examples](examples/wasm/README.md)
+
+## Compiling C/C++ to WebAssembly
+
+CMScript includes scripts and documentation for compiling C/C++ code to WebAssembly:
+
+### Quick Start
+
+```bash
+# 1. Download WASI-SDK
+scripts/download_wasi_sdk.sh
+
+# 2. Compile C to .wasm
+scripts/compile_to_wasm.sh examples/wasm/add.c build/add.wasm
+
+# 3. (Optional) Compile .wasm to .aot for better performance
+scripts/compile_to_aot.sh build/add.wasm build/add.aot
+```
+
+See [WASI-SDK Usage Guide](docs/WASI_SDK_GUIDE.md) for detailed instructions.
 
 ## License
 
