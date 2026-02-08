@@ -105,7 +105,8 @@ See `examples/` directory for more examples.
 ## Documentation
 
 - [WASM VM Documentation](src/WasmVM/README.md)
-- [WASI-SDK Usage Guide](docs/WASI_SDK_GUIDE.md) - How to compile C/C++ to .wasm and .aot
+- [WASI-SDK Usage Guide](docs/WASI_SDK_GUIDE.md) - Complete guide for compiling C/C++ to .wasm and .aot
+- [WASI-SDK Quick Reference](docs/WASI_SDK_QUICK_REFERENCE.md) - Quick commands and examples
 - [WASM Examples](examples/wasm/README.md)
 
 ## Compiling C/C++ to WebAssembly
