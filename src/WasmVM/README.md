@@ -81,7 +81,7 @@ The WASM VM is built as part of CMScript. CMake options:
 
 ### Requirements
 
-- CMake 3.28+
+- CMake 3.20+
 - C++20 compiler
 - Git (for submodules)
 

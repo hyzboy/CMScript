@@ -64,7 +64,9 @@ namespace hgl::wasm
         }
 
         // Get the module instance
-        module_inst_ = WasmEdge_VMGetRegisteredModule(vm_context_, WasmEdge_StringCreateByCString(""));
+        WasmEdge_String module_name = WasmEdge_StringCreateByCString("");
+        module_inst_ = WasmEdge_VMGetRegisteredModule(vm_context_, module_name);
+        WasmEdge_StringDelete(module_name);
 
         return true;
     }

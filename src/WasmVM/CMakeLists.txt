@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.20)
 
 option(CMSCRIPT_ENABLE_WASM "Build WASM VM backend" ON)
 option(CMSCRIPT_ENABLE_WAMR "Build WAMR backend" ON)

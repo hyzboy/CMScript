@@ -36,7 +36,7 @@ CMScript/
 ## Building
 
 ### Requirements
-- CMake 3.28+
+- CMake 3.20+
 - C++20 compiler
 - Git
 

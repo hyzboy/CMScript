@@ -143,15 +143,14 @@ namespace hgl::wasm
         }
 
         // Get results
-        if (result_count > 0 && results)
+        // Note: WAMR stores results at the beginning of the argument array after execution
+        // This is a simplified implementation for basic return values
+        if (result_count > 0 && results && !wamr_args.empty())
         {
-            // WAMR returns results in the same buffer
-            // For simplicity, we assume single I32 result
-            if (result_count == 1 && !wamr_args.empty())
-            {
-                results[0].type = ValueType::I32;
-                results[0].data.i32 = static_cast<int32_t>(wamr_args[0]);
-            }
+            // Assume I32 result type for simplicity
+            // A complete implementation would need to track actual result types
+            results[0].type = ValueType::I32;
+            results[0].data.i32 = static_cast<int32_t>(wamr_args[0]);
         }
 
         return true;
