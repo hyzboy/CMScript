@@ -14,5 +14,16 @@ macro(cm_example_project sub_folder project_name)
     set_property(TARGET ${project_name} PROPERTY CXX_STANDARD 20)
 endmacro()
 
+# DevilVM examples
 cm_example_project("" DevilVM_Hello hello_devilvm.cpp)
 cm_example_project("" DevilVM_Goto goto_devilvm.cpp)
+
+# WASM VM examples
+if(CMSCRIPT_ENABLE_WASM)
+    if(CMSCRIPT_ENABLE_WAMR)
+        cm_example_project("" WasmVM_WAMR hello_wamr.cpp)
+    endif()
+    if(CMSCRIPT_ENABLE_WASMEDGE)
+        cm_example_project("" WasmVM_WasmEdge hello_wasmedge.cpp)
+    endif()
+endif()
