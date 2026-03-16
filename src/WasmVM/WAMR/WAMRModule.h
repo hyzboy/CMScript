@@ -3,11 +3,13 @@
 #include <hgl/wasm/WasmModule.h>
 #include <string>
 #include <vector>
+extern "C"
+{
+    #include <wasm_export.h>
 
-// Forward declarations for WAMR types
-typedef struct WASMModuleCommon* wasm_module_t;
-typedef struct WASMModuleInstanceCommon* wasm_module_inst_t;
-typedef struct WASMFunctionInstanceCommon* wasm_function_inst_t;
+    // Forward declarations for WAMR types
+    typedef struct WASMModuleCommon* wasm_module_t;
+}
 
 namespace hgl::wasm
 {

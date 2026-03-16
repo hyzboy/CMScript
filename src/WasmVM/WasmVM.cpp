@@ -1,9 +1,18 @@
 #include <hgl/wasm/WasmVM.h>
+
+#ifdef CMSCRIPT_WAMR_ENABLED
 #include "WAMR/WAMRModule.h"
 #include "WAMR/WAMRContext.h"
+extern "C"
+{
+#include <wasm_export.h>
+}
+#endif
+
+#ifdef CMSCRIPT_WASMEDGE_ENABLED
 #include "WasmEdge/WasmEdgeModule.h"
 #include "WasmEdge/WasmEdgeContext.h"
-#include <wasm_export.h>
+#endif
 
 namespace hgl::wasm
 {
@@ -15,6 +24,7 @@ namespace hgl::wasm
     {
         switch (type)
         {
+#ifdef CMSCRIPT_WAMR_ENABLED
             case VMType::WAMR:
             {
                 if (!wamr_initialized)
@@ -25,12 +35,15 @@ namespace hgl::wasm
                 }
                 return true;
             }
+#endif
+#ifdef CMSCRIPT_WASMEDGE_ENABLED
             case VMType::WasmEdge:
             {
                 // WasmEdge doesn't require global initialization
                 wasmedge_initialized = true;
                 return true;
             }
+#endif
             default:
                 return false;
         }
@@ -40,6 +53,7 @@ namespace hgl::wasm
     {
         switch (type)
         {
+#ifdef CMSCRIPT_WAMR_ENABLED
             case VMType::WAMR:
             {
                 if (wamr_initialized)
@@ -49,12 +63,15 @@ namespace hgl::wasm
                 }
                 break;
             }
+#endif
+#ifdef CMSCRIPT_WASMEDGE_ENABLED
             case VMType::WasmEdge:
             {
                 // WasmEdge doesn't require global cleanup
                 wasmedge_initialized = false;
                 break;
             }
+#endif
         }
     }
 
@@ -62,6 +79,7 @@ namespace hgl::wasm
     {
         switch (type)
         {
+#ifdef CMSCRIPT_WAMR_ENABLED
             case VMType::WAMR:
             {
                 if (!wamr_initialized)
@@ -71,6 +89,8 @@ namespace hgl::wasm
                 }
                 return std::make_shared<WAMRModule>();
             }
+#endif
+#ifdef CMSCRIPT_WASMEDGE_ENABLED
             case VMType::WasmEdge:
             {
                 if (!wasmedge_initialized)
@@ -80,6 +100,7 @@ namespace hgl::wasm
                 }
                 return std::make_shared<WasmEdgeModule>();
             }
+#endif
             default:
                 return nullptr;
         }
@@ -89,6 +110,7 @@ namespace hgl::wasm
     {
         switch (type)
         {
+#ifdef CMSCRIPT_WAMR_ENABLED
             case VMType::WAMR:
             {
                 if (!wamr_initialized)
@@ -98,6 +120,8 @@ namespace hgl::wasm
                 }
                 return std::make_shared<WAMRContext>();
             }
+#endif
+#ifdef CMSCRIPT_WASMEDGE_ENABLED
             case VMType::WasmEdge:
             {
                 if (!wasmedge_initialized)
@@ -107,6 +131,7 @@ namespace hgl::wasm
                 }
                 return std::make_shared<WasmEdgeContext>();
             }
+#endif
             default:
                 return nullptr;
         }

@@ -1,5 +1,9 @@
 #include "WAMRModule.h"
+
+extern "C"
+{
 #include <wasm_export.h>
+}
 #include <fstream>
 #include <cstring>
 

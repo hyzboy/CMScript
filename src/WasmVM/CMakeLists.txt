@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 option(CMSCRIPT_ENABLE_WASM "Build WASM VM backend" ON)
 option(CMSCRIPT_ENABLE_WAMR "Build WAMR backend" ON)
-option(CMSCRIPT_ENABLE_WASMEDGE "Build WasmEdge backend" ON)
+option(CMSCRIPT_ENABLE_WASMEDGE "Build WasmEdge backend" OFF)
 
 if(NOT CMSCRIPT_ENABLE_WASM)
     return()
@@ -45,9 +45,18 @@ if(CMSCRIPT_ENABLE_WAMR)
     # Add WAMR as subdirectory
     set(WAMR_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/wasm-micro-runtime)
     
+    # Set WAMR platform based on system
+    if(WIN32)
+        set(WAMR_BUILD_PLATFORM "windows")
+    elseif(APPLE)
+        set(WAMR_BUILD_PLATFORM "darwin")
+    else()
+        set(WAMR_BUILD_PLATFORM "linux")
+    endif()
+    
     # Include WAMR build scripts
     include(${WAMR_ROOT_DIR}/build-scripts/runtime_lib.cmake)
-    
+        
     set(WAMR_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/WAMR/WAMRModule.h
         ${CMAKE_CURRENT_SOURCE_DIR}/WAMR/WAMRModule.cpp
@@ -59,7 +68,7 @@ if(CMSCRIPT_ENABLE_WAMR)
     list(APPEND WASM_VM_INCLUDE_DIRS ${WAMR_ROOT_DIR}/core/iwasm/include)
     list(APPEND WASM_VM_LIBRARIES vmlib)
     
-    add_definitions(-DCMSCRIPT_WAMR_ENABLED=1)
+    add_compile_definitions(CMSCRIPT_WAMR_ENABLED=1)
 endif()
 
 # WasmEdge Backend
@@ -87,7 +96,7 @@ if(CMSCRIPT_ENABLE_WASMEDGE)
     list(APPEND WASM_VM_INCLUDE_DIRS ${WASMEDGE_ROOT_DIR}/include)
     list(APPEND WASM_VM_LIBRARIES wasmedge)
     
-    add_definitions(-DCMSCRIPT_WASMEDGE_ENABLED=1)
+    add_compile_definitions(CMSCRIPT_WASMEDGE_ENABLED=1)
 endif()
 
 # Source groups for IDE

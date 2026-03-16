@@ -2,10 +2,10 @@
 
 #include <hgl/wasm/WasmContext.h>
 #include "WAMRModule.h"
-
-// Forward declarations for WAMR types
-typedef struct WASMModuleInstanceCommon* wasm_module_inst_t;
-typedef struct WASMExecEnv* wasm_exec_env_t;
+extern "C"
+{
+    #include <wasm_export.h>
+}
 
 namespace hgl::wasm
 {

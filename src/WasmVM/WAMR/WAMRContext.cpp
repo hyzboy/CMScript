@@ -1,6 +1,9 @@
 #include "WAMRContext.h"
 #include "WAMRModule.h"
+extern "C"
+{
 #include <wasm_export.h>
+}
 #include <cstring>
 
 namespace hgl::wasm
@@ -91,7 +94,7 @@ namespace hgl::wasm
             return false;
         }
 
-        wasm_function_inst_t func = wasm_runtime_lookup_function(module_inst_, func_name, nullptr);
+        wasm_function_inst_t func = wasm_runtime_lookup_function(module_inst_, func_name);
         if (!func)
         {
             SetError("Function not found: " + std::string(func_name));
@@ -182,7 +185,17 @@ namespace hgl::wasm
             return nullptr;
         }
 
-        return wasm_runtime_get_memory_data(module_inst_);
+        // Get the default memory instance
+        wasm_memory_inst_t memory_inst = wasm_runtime_get_default_memory(module_inst_);
+        if (!memory_inst)
+        {
+            SetError("Memory instance not found");
+            return nullptr;
+        }
+
+        // Convert WASM address 0 to native pointer
+        // WASM memory starts at address 0 in the WASM space
+        return (uint8_t*)wasm_runtime_addr_app_to_native(module_inst_, 0);
     }
 
     size_t WAMRContext::GetMemorySize(const char* memory_name)
@@ -193,7 +206,18 @@ namespace hgl::wasm
             return 0;
         }
 
-        return wasm_runtime_get_memory_data_size(module_inst_);
+        // Get the default memory instance
+        wasm_memory_inst_t memory_inst = wasm_runtime_get_default_memory(module_inst_);
+        if (!memory_inst)
+        {
+            SetError("Memory instance not found");
+            return 0;
+        }
+
+        // Calculate memory size: pages * bytes per page
+        uint64_t pages = wasm_memory_get_cur_page_count(memory_inst);
+        uint64_t bytes_per_page = wasm_memory_get_bytes_per_page(memory_inst);
+        return static_cast<size_t>(pages * bytes_per_page);
     }
 
     void WAMRContext::SetError(const std::string& msg)
