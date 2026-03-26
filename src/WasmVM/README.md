@@ -75,9 +75,7 @@ hgl::wasm::CleanupVM(hgl::wasm::VMType::WAMR);
 
 The WASM VM is built as part of CMScript. CMake options:
 
-- `CMSCRIPT_ENABLE_WASM=ON/OFF` - Enable/disable WASM VM (default: ON)
 - `CMSCRIPT_ENABLE_WAMR=ON/OFF` - Enable/disable WAMR backend (default: ON)
-- `CMSCRIPT_ENABLE_WASMEDGE=ON/OFF` - Enable/disable WasmEdge backend (default: ON)
 
 ### Requirements
 
