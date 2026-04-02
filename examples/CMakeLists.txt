@@ -16,3 +16,5 @@ endmacro()
 
 cm_example_project("" DevilVM_Hello hello_devilvm.cpp)
 cm_example_project("" DevilVM_Goto goto_devilvm.cpp)
+
+add_subdirectory(WasmCScript)
