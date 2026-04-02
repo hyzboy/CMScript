@@ -73,12 +73,6 @@ namespace hgl::wasm
          * @return 错误信息字符串
          */
         virtual std::string GetErrorMessage() const = 0;
-
-        /**
-         * 获取虚拟机类型
-         * @return 虚拟机类型
-         */
-        virtual VMType GetVMType() const = 0;
     };
 
     /**
@@ -86,6 +80,6 @@ namespace hgl::wasm
      * @param type 虚拟机类型
      * @return 上下文实例智能指针
      */
-    std::shared_ptr<IWasmContext> CreateWasmContext(VMType type);
+    std::shared_ptr<IWasmContext> CreateWasmContext();
 
 }//namespace hgl::wasm

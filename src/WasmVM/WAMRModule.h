@@ -39,7 +39,6 @@ namespace hgl::wasm
             const std::vector<ValueType>& result_types) override;
 
         bool IsValid() const override;
-        VMType GetVMType() const override { return VMType::WAMR; }
         std::string GetErrorMessage() const override { return error_message_; }
 
         wasm_module_t GetNativeModule() const { return module_; }

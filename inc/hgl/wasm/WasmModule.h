@@ -56,12 +56,6 @@ namespace hgl::wasm
         virtual bool IsValid() const = 0;
 
         /**
-         * 获取虚拟机类型
-         * @return 虚拟机类型
-         */
-        virtual VMType GetVMType() const = 0;
-
-        /**
          * 获取错误信息
          * @return 错误信息字符串
          */
@@ -73,6 +67,6 @@ namespace hgl::wasm
      * @param type 虚拟机类型
      * @return 模块实例智能指针
      */
-    std::shared_ptr<IWasmModule> CreateWasmModule(VMType type);
+    std::shared_ptr<IWasmModule> CreateWasmModule();
 
 }//namespace hgl::wasm

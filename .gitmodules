@@ -1,6 +1,3 @@
-[submodule "third_party/wasm-micro-runtime"]
-	path = third_party/wasm-micro-runtime
+[submodule "src/WasmVM/wasm-micro-runtime"]
+	path = src/WasmVM/wasm-micro-runtime
 	url = https://github.com/bytecodealliance/wasm-micro-runtime.git
-[submodule "third_party/WasmEdge"]
-	path = third_party/WasmEdge
-	url = https://github.com/WasmEdge/WasmEdge.git

@@ -10,15 +10,6 @@
 namespace hgl::wasm
 {
     /**
-     * WASM虚拟机类型
-     */
-    enum class VMType
-    {
-        WAMR,       // WebAssembly Micro Runtime
-        WasmEdge    // WasmEdge Runtime
-    };
-
-    /**
      * WASM值类型
      */
     enum class ValueType

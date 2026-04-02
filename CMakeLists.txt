@@ -10,7 +10,5 @@ CMScriptSetup(${CMAKE_CURRENT_SOURCE_DIR})
 # On other platforms: empty (static linking)
 add_definitions(-DWASM_RUNTIME_API_EXTERN=)
 
-add_subdirectory(third_party/wasm-micro-runtime)
-
 add_subdirectory(${CMSCRIPT_ROOT_SOURCE_PATH})
 add_subdirectory(examples)

@@ -15,12 +15,12 @@ namespace hgl::wasm
      * @param type 虚拟机类型
      * @return 成功返回true，失败返回false
      */
-    bool InitializeVM(VMType type);
+    bool InitializeVM();
 
     /**
      * 清理WASM虚拟机
      * @param type 虚拟机类型
      */
-    void CleanupVM(VMType type);
+    void CleanupVM();
 
 }//namespace hgl::wasm

@@ -42,7 +42,6 @@ namespace hgl::wasm
         size_t GetMemorySize(const char* memory_name = "memory") override;
 
         std::string GetErrorMessage() const override { return error_message_; }
-        VMType GetVMType() const override { return VMType::WAMR; }
 
         void SetStackSize(uint32_t size) { stack_size_ = size; }
         void SetHeapSize(uint32_t size) { heap_size_ = size; }
