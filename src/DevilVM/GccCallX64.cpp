@@ -1,4 +1,4 @@
-#include <cstdint>
+﻿#include <cstdint>
 #include <hgl/platform/Platform.h>
 
 /*

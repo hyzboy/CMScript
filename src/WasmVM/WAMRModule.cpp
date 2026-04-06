@@ -1,4 +1,4 @@
-#include "WAMRModule.h"
+﻿#include "WAMRModule.h"
 
 extern "C"
 {

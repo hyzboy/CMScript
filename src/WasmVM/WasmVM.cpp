@@ -1,4 +1,4 @@
-#include <hgl/wasm/WasmVM.h>
+﻿#include <hgl/wasm/WasmVM.h>
 
 #include "WAMRModule.h"
 #include "WAMRContext.h"

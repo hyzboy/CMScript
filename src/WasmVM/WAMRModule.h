@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/wasm/WasmModule.h>
 #include <string>
@@ -29,7 +29,7 @@ namespace hgl::wasm
 
         bool LoadFromFile(const char* filename) override;
         bool LoadFromMemory(const uint8_t* data, size_t size) override;
-        
+
         bool RegisterHostFunction(
             const char* module_name,
             const char* func_name,

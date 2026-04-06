@@ -1,4 +1,4 @@
-#include "WAMRContext.h"
+﻿#include "WAMRContext.h"
 #include "WAMRModule.h"
 extern "C"
 {
@@ -136,7 +136,7 @@ namespace hgl::wasm
         }
 
         // Call function
-        if (!wasm_runtime_call_wasm(exec_env_, func, 
+        if (!wasm_runtime_call_wasm(exec_env_, func,
                                     static_cast<uint32_t>(wamr_args.size()),
                                     wamr_args.empty() ? nullptr : wamr_args.data()))
         {
@@ -168,7 +168,7 @@ namespace hgl::wasm
     {
         Value args[1];
         args[0] = Value::MakeI32(arg);
-        
+
         Value results[1];
         if (!CallFunction(func_name, args, 1, results, 1))
             return false;

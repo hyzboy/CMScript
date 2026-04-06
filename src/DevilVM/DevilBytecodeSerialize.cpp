@@ -1,4 +1,4 @@
-#include <hgl/devil/DevilBytecode.h>
+﻿#include <hgl/devil/DevilBytecode.h>
 #include <cstring>
 
 namespace hgl::devil

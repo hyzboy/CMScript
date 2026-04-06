@@ -1,4 +1,4 @@
-#include "DevilAst.h"
+﻿#include "DevilAst.h"
 #include "DevilCommand.h"
 #include "DevilFunc.h"
 #include <hgl/devil/DevilModule.h>

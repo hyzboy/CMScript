@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/wasm/WasmContext.h>
 #include "WAMRModule.h"
@@ -27,7 +27,7 @@ namespace hgl::wasm
         virtual ~WAMRContext();
 
         bool Instantiate(std::shared_ptr<IWasmModule> module) override;
-        
+
         bool CallFunction(
             const char* func_name,
             const Value* args,

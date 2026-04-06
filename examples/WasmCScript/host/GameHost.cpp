@@ -1,4 +1,4 @@
-#include "GameHost.h"
+﻿#include "GameHost.h"
 #include <cstdio>
 
 // --- GameHost Implementation ---

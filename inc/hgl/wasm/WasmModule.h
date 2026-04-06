@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <hgl/wasm/VM.h>
 #include <string>

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <cstdint>
 #include <vector>
@@ -39,7 +39,7 @@ namespace hgl::wasm
         } data;
 
         Value() : type(ValueType::I32) { data.i32 = 0; }
-        
+
         static Value MakeI32(int32_t val)
         {
             Value v;

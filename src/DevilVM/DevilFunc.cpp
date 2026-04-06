@@ -1,4 +1,4 @@
-#include "DevilFunc.h"
+﻿#include "DevilFunc.h"
 
 namespace hgl::devil
 {

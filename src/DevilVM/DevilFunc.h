@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "DevilAst.h"
 #include <string>

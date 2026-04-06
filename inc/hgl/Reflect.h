@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 // Unified reflection annotation macros
 // Design goal: Simple user-side syntax (H_CLASS/H_STRUCT/H_PROPERTY/H_FUNCTION)

@@ -1,4 +1,4 @@
-#include "ReflectionBootstrap.h"
+﻿#include "ReflectionBootstrap.h"
 #include "GameHost.reflect.h"
 
 bool register_all_script_bindings() {

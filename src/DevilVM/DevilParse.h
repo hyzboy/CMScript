@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "as_tokenizer.h"
 #include "DevilAst.h"

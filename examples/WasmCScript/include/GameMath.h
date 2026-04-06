@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 /**
  * Simple C math functions for WASM

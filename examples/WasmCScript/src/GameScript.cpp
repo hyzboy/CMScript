@@ -1,4 +1,4 @@
-#include "GameScript.h"
+﻿#include "GameScript.h"
 #include <cmath>
 
 // --- GameLogic Implementation ---

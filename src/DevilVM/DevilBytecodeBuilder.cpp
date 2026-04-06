@@ -1,4 +1,4 @@
-#include "DevilBytecodeBuilder.h"
+﻿#include "DevilBytecodeBuilder.h"
 #include <hgl/devil/DevilModule.h>
 
 namespace hgl::devil

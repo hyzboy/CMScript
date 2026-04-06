@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <cstdint>
 #include "hgl/Reflect.h"
@@ -6,7 +6,7 @@
 /**
  * Host-side game interface
  * These classes are exposed to WASM scripts via native symbol registration
- * 
+ *
  * Macro annotations are automatically detected by clang AST parser:
  * - H_CLASS: marks a class for reflection
  * - H_FUNCTION: marks a method for native export

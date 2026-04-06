@@ -1,4 +1,4 @@
-#include <hgl/devil/DevilBytecode.h>
+﻿#include <hgl/devil/DevilBytecode.h>
 #include <hgl/devil/DevilModule.h>
 #include "DevilCommand.h"
 
